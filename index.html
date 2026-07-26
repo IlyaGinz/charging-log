@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#1a1815">
-<title>Журнал зарядок Поника</title>
+<title>Журнал зарядок</title>
 <style>
   :root{
     --bg:#1a1815;
@@ -320,11 +320,19 @@
         </div>
         <div class="clog-field">
           <label>Время начала</label>
-          <input type="time" id="clog-in-start">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" inputmode="numeric" min="0" max="23" placeholder="ЧЧ" id="clog-in-start-h" style="flex:1;min-width:0;">
+            <span class="clog-mono" style="color:var(--muted-2);">:</span>
+            <input type="number" inputmode="numeric" min="0" max="59" placeholder="ММ" id="clog-in-start-m" style="flex:1;min-width:0;">
+          </div>
         </div>
         <div class="clog-field">
           <label>Время окончания</label>
-          <input type="time" id="clog-in-end">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" inputmode="numeric" min="0" max="23" placeholder="ЧЧ" id="clog-in-end-h" style="flex:1;min-width:0;">
+            <span class="clog-mono" style="color:var(--muted-2);">:</span>
+            <input type="number" inputmode="numeric" min="0" max="59" placeholder="ММ" id="clog-in-end-m" style="flex:1;min-width:0;">
+          </div>
         </div>
         <div class="clog-field">
           <label>Пробег, км (одометр)</label>
@@ -414,6 +422,18 @@
       else el.textContent = fmt(to, decimals);
     }
     requestAnimationFrame(step);
+  }
+  function hmToStr(h, m){
+    if(h===''||h===null||h===undefined||isNaN(parseInt(h,10))) return '';
+    const hh = Math.max(0, Math.min(23, parseInt(h,10)));
+    const mm = Math.max(0, Math.min(59, parseInt(m||0,10)||0));
+    return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  }
+  function strToHM(str, hEl, mEl){
+    if(!str){ hEl.value=''; mEl.value=''; return; }
+    const parts = String(str).split(':');
+    hEl.value = parts[0]!==undefined ? parseInt(parts[0],10) : '';
+    mEl.value = parts[1]!==undefined ? parseInt(parts[1],10) : '';
   }
   function computeMinutes(start, end){
     if(!start || !end) return null;
@@ -619,8 +639,8 @@
     $('clog-in-date').value = toISODate(e.date);
     $('clog-in-kwh').value = e.kwh;
     $('clog-in-price').value = e.price;
-    $('clog-in-start').value = e.start || '';
-    $('clog-in-end').value = e.end || '';
+    strToHM(e.start, $('clog-in-start-h'), $('clog-in-start-m'));
+    strToHM(e.end, $('clog-in-end-h'), $('clog-in-end-m'));
     $('clog-in-odo').value = (e.odo!==null && e.odo!==undefined) ? e.odo : '';
     $('clog-in-note').value = e.note || '';
     $('clog-form-title').textContent = 'Редактирование записи';
@@ -634,8 +654,10 @@
     $('clog-in-date').value = todayISO();
     $('clog-in-kwh').value = '';
     $('clog-in-price').value = state.defaultPrice;
-    $('clog-in-start').value = '';
-    $('clog-in-end').value = '';
+    $('clog-in-start-h').value = '';
+    $('clog-in-start-m').value = '';
+    $('clog-in-end-h').value = '';
+    $('clog-in-end-m').value = '';
     $('clog-in-odo').value = '';
     $('clog-in-note').value = '';
     $('clog-form-title').textContent = 'Новая запись';
@@ -650,8 +672,8 @@
     const date = $('clog-in-date').value || todayISO();
     const kwh = parseFloat($('clog-in-kwh').value);
     const price = parseFloat($('clog-in-price').value);
-    const start = $('clog-in-start').value || null;
-    const end = $('clog-in-end').value || null;
+    const start = hmToStr($('clog-in-start-h').value, $('clog-in-start-m').value) || null;
+    const end = hmToStr($('clog-in-end-h').value, $('clog-in-end-m').value) || null;
     const odoRaw = $('clog-in-odo').value;
     const odo = (odoRaw==='' || isNaN(parseInt(odoRaw,10))) ? null : parseInt(odoRaw,10);
     const note = $('clog-in-note').value.trim();
