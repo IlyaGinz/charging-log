@@ -1,0 +1,655 @@
+<style>
+  :root{
+    --bg:#1a1815;
+    --panel:#232120;
+    --panel-2:#2b2826;
+    --line:rgba(232,228,220,0.09);
+    --line-strong:rgba(232,228,220,0.16);
+    --text:#e9e5dc;
+    --muted:#948d82;
+    --muted-2:#6b655c;
+    --copper:#c88a4a;
+    --copper-dim:rgba(200,138,74,0.16);
+    --led:#4fae72;
+    --led-dim:rgba(79,174,114,0.18);
+    --red:#c85a52;
+  }
+  *{box-sizing:border-box;}
+  .clog-root{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(200,138,74,0.06), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 28px 16px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .clog-mono{
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .clog-wrap{max-width:640px;margin:0 auto;}
+  .clog-nameplate{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding-bottom:14px;margin-bottom:18px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .clog-eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
+    font-weight:600;
+  }
+  .clog-title{
+    font-size:22px;font-weight:700;letter-spacing:.01em;margin-top:4px;
+  }
+  .clog-serial{
+    font-size:11px;color:var(--muted-2);text-align:right;line-height:1.6;
+  }
+  .clog-meter{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px 20px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .clog-meter::before{
+    content:"";position:absolute;inset:0 0 auto 0;height:3px;
+    background:linear-gradient(90deg, var(--copper), transparent 70%);
+    opacity:.7;
+  }
+  .clog-meter-main{display:flex;align-items:flex-end;gap:10px;}
+  .clog-meter-digits{
+    font-size:44px;font-weight:700;letter-spacing:.01em;color:var(--text);
+    line-height:1;
+  }
+  .clog-meter-unit{
+    font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+    padding-bottom:8px;
+  }
+  .clog-led{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--muted-2);
+    margin-right:6px;display:inline-block;
+    box-shadow:none;
+    transition:background .25s, box-shadow .25s;
+  }
+  .clog-led.on{background:var(--led);box-shadow:0 0 8px var(--led-dim);}
+  .clog-meter-sub{
+    display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;
+  }
+  .clog-stat-label{
+    font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.09em;
+  }
+  .clog-stat-value{
+    font-size:16px;font-weight:600;margin-top:2px;
+  }
+  .clog-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:18px;
+  }
+  .clog-panel-head{
+    font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+    margin-bottom:14px;font-weight:600;
+  }
+  .clog-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;
+  }
+  .clog-field{display:flex;flex-direction:column;gap:5px;}
+  .clog-field label{
+    font-size:10.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.07em;
+  }
+  .clog-field input{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--text);
+    padding:9px 10px;
+    font-size:14px;
+    outline:none;
+  }
+  .clog-field input:focus{border-color:var(--copper);}
+  .clog-duo{display:flex;gap:8px;}
+  .clog-duo input{width:100%;}
+  .clog-btn{
+    appearance:none;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--text);
+    border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;
+    cursor:pointer;transition:border-color .15s, background .15s;
+  }
+  .clog-btn:hover{border-color:var(--copper);}
+  .clog-btn-primary{
+    background:var(--copper);border-color:var(--copper);color:#1a1512;
+  }
+  .clog-btn-primary:hover{filter:brightness(1.08);}
+  .clog-btn-ghost{
+    background:transparent;border-color:transparent;color:var(--muted);
+    padding:6px 8px;font-size:12px;font-weight:500;
+  }
+  .clog-btn-ghost:hover{color:var(--red);border-color:transparent;}
+  .clog-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;}
+  .clog-actions-btns{display:flex;gap:8px;flex:none;}
+  .clog-log-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:10px;
+  }
+  .clog-log-title{
+    font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;
+  }
+  .clog-log-tools{display:flex;gap:8px;}
+  .clog-toolbtn{
+    font-size:11.5px;color:var(--muted);background:transparent;border:1px solid var(--line-strong);
+    border-radius:5px;padding:5px 10px;cursor:pointer;
+  }
+  .clog-toolbtn:hover{color:var(--copper);border-color:var(--copper);}
+  .clog-row{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .clog-row:last-child{border-bottom:none;}
+  .clog-row.clog-row-editing{
+    border-left:2px solid var(--copper);
+    padding-left:8px;
+    background:var(--copper-dim);
+    border-radius:6px;
+  }
+  .clog-slot{
+    width:26px;height:26px;flex:none;
+    border:1px solid var(--line-strong);border-radius:5px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:var(--muted-2);
+    background:var(--panel-2);
+  }
+  .clog-row-main{flex:1;min-width:0;}
+  .clog-row-date{font-size:13.5px;font-weight:600;}
+  .clog-row-meta{
+    font-size:11.5px;color:var(--muted);margin-top:2px;
+    display:flex;gap:10px;flex-wrap:wrap;
+  }
+  .clog-row-note{font-size:11.5px;color:var(--muted-2);margin-top:3px;font-style:italic;}
+  .clog-row-right{text-align:right;flex:none;}
+  .clog-row-kwh{font-size:14.5px;font-weight:700;}
+  .clog-row-cost{font-size:12px;color:var(--copper);margin-top:2px;}
+  .clog-row-del, .clog-row-edit{
+    background:none;border:none;color:var(--muted-2);cursor:pointer;
+    font-size:15px;padding:2px 4px;line-height:1;flex:none;
+  }
+  .clog-row-del:hover{color:var(--red);}
+  .clog-row-edit:hover{color:var(--copper);}
+  .clog-confirm{
+    display:flex;align-items:center;gap:7px;flex:none;
+  }
+  .clog-confirm-text{
+    font-size:11.5px;color:var(--red);white-space:nowrap;
+  }
+  .clog-confirm-yes, .clog-confirm-no{
+    border:1px solid var(--line-strong);border-radius:5px;
+    background:var(--panel-2);color:var(--text);
+    font-size:11.5px;padding:5px 9px;cursor:pointer;
+  }
+  .clog-confirm-yes{border-color:var(--red);color:var(--red);}
+  .clog-confirm-yes:hover{background:var(--red);color:#1a1512;}
+  .clog-confirm-no:hover{border-color:var(--copper);color:var(--copper);}
+  .clog-empty{
+    text-align:center;color:var(--muted-2);font-size:13px;padding:30px 10px;
+  }
+  .clog-note-line{
+    font-size:11.5px;color:var(--muted-2);margin-top:10px;line-height:1.5;
+  }
+  @media (max-width:420px){
+    .clog-grid{grid-template-columns:1fr;}
+    .clog-meter-digits{font-size:36px;}
+    .clog-nameplate{flex-direction:column;gap:6px;}
+    .clog-serial{text-align:left;}
+    .clog-actions{flex-direction:column;align-items:stretch;}
+    .clog-actions-btns{justify-content:flex-end;}
+  }
+</style>
+<div class="clog-root">
+  <div class="clog-wrap">
+    <div class="clog-nameplate">
+      <div>
+        <div class="clog-eyebrow">Домашний учёт · независимо от приложения</div>
+        <div class="clog-title">Журнал зарядок</div>
+      </div>
+      <div class="clog-serial clog-mono" id="clog-today"></div>
+    </div>
+    <div class="clog-meter">
+      <div class="clog-meter-main">
+        <span class="clog-led" id="clog-led"></span>
+        <span class="clog-meter-digits clog-mono" id="clog-total-kwh">0.00</span>
+        <span class="clog-meter-unit">кВтч всего</span>
+      </div>
+      <div class="clog-meter-sub">
+        <div>
+          <div class="clog-stat-label">Сессий</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-count">0</div>
+        </div>
+        <div>
+          <div class="clog-stat-label">Итого, ₪</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-cost">0.00</div>
+        </div>
+        <div>
+          <div class="clog-stat-label">Средняя, кВтч</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-avgkwh">–</div>
+        </div>
+        <div>
+          <div class="clog-stat-label">Средняя мощность</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-avgpower">–</div>
+        </div>
+      </div>
+    </div>
+    <div class="clog-panel">
+      <div class="clog-panel-head" id="clog-form-title">Новая запись</div>
+      <div class="clog-grid">
+        <div class="clog-field">
+          <label>Дата</label>
+          <input type="date" id="clog-in-date">
+        </div>
+        <div class="clog-field">
+          <label>Энергия, кВтч</label>
+          <input type="number" step="0.01" min="0" placeholder="22.15" id="clog-in-kwh">
+        </div>
+        <div class="clog-field">
+          <label>Цена, ₪/кВтч</label>
+          <input type="number" step="0.01" min="0" id="clog-in-price">
+        </div>
+        <div class="clog-field">
+          <label>Время начала</label>
+          <input type="time" id="clog-in-start">
+        </div>
+        <div class="clog-field">
+          <label>Время окончания</label>
+          <input type="time" id="clog-in-end">
+        </div>
+        <div class="clog-field" style="grid-column:1 / -1;">
+          <label>Заметка (ток, обстоятельства и т.п.)</label>
+          <input type="text" placeholder="напр. 14А, после солнца" id="clog-in-note">
+        </div>
+      </div>
+      <div class="clog-actions">
+        <span class="clog-note-line" id="clog-form-msg"></span>
+        <div class="clog-actions-btns">
+          <button class="clog-btn" id="clog-cancel-btn" style="display:none;">Отмена</button>
+          <button class="clog-btn clog-btn-primary" id="clog-add-btn">Добавить запись</button>
+        </div>
+      </div>
+    </div>
+    <div class="clog-panel">
+      <div class="clog-log-head">
+        <div class="clog-log-title">Записи</div>
+        <div class="clog-log-tools">
+          <button class="clog-toolbtn" id="clog-import-btn">Импорт CSV</button>
+          <button class="clog-toolbtn" id="clog-export-btn">Экспорт CSV</button>
+          <input type="file" id="clog-import-file" accept=".csv" style="display:none">
+        </div>
+      </div>
+      <div id="clog-list"></div>
+    </div>
+    <div class="clog-note-line">
+      Хранится локально в памяти этого артефакта — независимо от истории в приложении зарядника. Раз в какое-то время нажимай «Экспорт CSV», чтобы держать копию у себя.
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const STORE_KEY = 'charging-log-v1';
+  let state = { defaultPrice: 0.65, entries: [] };
+  let pendingDeleteId = null;
+  let editingId = null;
+  const $ = (id) => document.getElementById(id);
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  function fmt(n, d){
+    if(n === null || n === undefined || isNaN(n)) return '–';
+    return Number(n).toFixed(d===undefined?2:d);
+  }
+  function ledPulse(){
+    const led = $('clog-led');
+    led.classList.add('on');
+    setTimeout(()=>led.classList.remove('on'), 900);
+  }
+  function countUp(el, from, to, decimals){
+    const dur = 550, start = performance.now();
+    from = isNaN(from)?0:from;
+    function step(t){
+      const p = Math.min(1, (t-start)/dur);
+      const eased = 1 - Math.pow(1-p, 3);
+      const val = from + (to-from)*eased;
+      el.textContent = fmt(val, decimals);
+      if(p<1) requestAnimationFrame(step);
+      else el.textContent = fmt(to, decimals);
+    }
+    requestAnimationFrame(step);
+  }
+  function computeMinutes(start, end){
+    if(!start || !end) return null;
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    if(isNaN(sh)||isNaN(sm)||isNaN(eh)||isNaN(em)) return null;
+    let mins = (eh*60+em) - (sh*60+sm);
+    if(mins <= 0) mins += 24*60; // charge crossed midnight
+    return mins;
+  }
+  // <input type="date"> only accepts strict "yyyy-MM-dd". Older backups/CSVs
+  // stored dates as "dd/MM/yyyy" — normalize so the date field (and any other
+  // date-only logic) never silently rejects the value.
+  function toISODate(str){
+    if(!str) return '';
+    str = String(str).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m){
+      const [, d, mo, y] = m;
+      return y+'-'+mo.padStart(2,'0')+'-'+d.padStart(2,'0');
+    }
+    return str;
+  }
+  async function load(){
+    try{
+      const res = await window.storage.get(STORE_KEY, false);
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        state.defaultPrice = parsed.defaultPrice ?? 0.65;
+        state.entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+      }
+    }catch(e){
+      // no saved data yet — start fresh
+      state = { defaultPrice: 0.65, entries: [] };
+    }
+    // one-time migration: fix any legacy dd/MM/yyyy dates to ISO
+    let migrated = false;
+    state.entries.forEach(e=>{
+      const iso = toISODate(e.date);
+      if(iso !== e.date){ e.date = iso; migrated = true; }
+    });
+    if(migrated) save();
+    resetForm();
+    render(true);
+  }
+  async function save(){
+    try{
+      await window.storage.set(STORE_KEY, JSON.stringify(state), false);
+    }catch(e){
+      $('clog-form-msg').textContent = 'Не удалось сохранить — попробуй ещё раз';
+      $('clog-form-msg').style.color = 'var(--red)';
+    }
+  }
+  function computeStats(){
+    const entries = state.entries;
+    const count = entries.length;
+    const totalKwh = entries.reduce((s,e)=>s+e.kwh,0);
+    const totalCost = entries.reduce((s,e)=>s+e.cost,0);
+    const withDur = entries.filter(e=>e.minutes && e.minutes>0);
+    const avgPower = withDur.length
+      ? withDur.reduce((s,e)=>s+(e.kwh/(e.minutes/60)),0)/withDur.length
+      : null;
+    return {
+      count, totalKwh, totalCost,
+      avgKwh: count ? totalKwh/count : null,
+      avgPower
+    };
+  }
+  function render(skipAnim){
+    const s = computeStats();
+    const totalEl = $('clog-total-kwh');
+    const prevTotal = parseFloat(totalEl.textContent) || 0;
+    if(skipAnim) totalEl.textContent = fmt(s.totalKwh,2);
+    else countUp(totalEl, prevTotal, s.totalKwh, 2);
+    $('clog-stat-count').textContent = s.count;
+    $('clog-stat-cost').textContent = fmt(s.totalCost,2);
+    $('clog-stat-avgkwh').textContent = s.avgKwh===null ? '–' : fmt(s.avgKwh,1);
+    $('clog-stat-avgpower').textContent = s.avgPower===null ? '–' : fmt(s.avgPower,1)+' кВт';
+    const list = $('clog-list');
+    list.innerHTML = '';
+    if(!state.entries.length){
+      list.innerHTML = '<div class="clog-empty">Пока пусто — добавь первую сессию выше.</div>';
+      return;
+    }
+    const sorted = [...state.entries].sort((a,b)=> (b.date+b.id) > (a.date+a.id) ? 1 : -1);
+    sorted.forEach((e, idx) => {
+      const row = document.createElement('div');
+      row.className = 'clog-row' + (String(e.id)===String(editingId) ? ' clog-row-editing' : '');
+      const durText = e.minutes ? Math.floor(e.minutes/60)+'ч '+(e.minutes%60)+'м' : null;
+      const powerText = e.minutes ? fmt(e.kwh/(e.minutes/60),1)+' кВт' : null;
+      const rangeText = (e.start && e.end) ? (e.start+'–'+e.end) : null;
+      const metaParts = [e.price.toFixed(2)+' ₪/кВтч'];
+      if(rangeText) metaParts.push(rangeText);
+      if(durText) metaParts.push(durText);
+      if(powerText) metaParts.push('≈'+powerText);
+      const isPending = pendingDeleteId === e.id;
+      row.innerHTML = `
+        <div class="clog-slot">${sorted.length-idx}</div>
+        <div class="clog-row-main">
+          <div class="clog-row-date">${e.date}</div>
+          <div class="clog-row-meta">${metaParts.map(m=>'<span>'+m+'</span>').join('')}</div>
+          ${e.note ? '<div class="clog-row-note">'+escapeHtml(e.note)+'</div>' : ''}
+        </div>
+        ${isPending ? `
+        <div class="clog-confirm">
+          <span class="clog-confirm-text">Удалить?</span>
+          <button class="clog-confirm-yes" data-id="${e.id}">Да</button>
+          <button class="clog-confirm-no" data-id="${e.id}">Нет</button>
+        </div>
+        ` : `
+        <div class="clog-row-right">
+          <div class="clog-row-kwh clog-mono">${fmt(e.kwh,2)}</div>
+          <div class="clog-row-cost clog-mono">${fmt(e.cost,2)} ₪</div>
+        </div>
+        <button class="clog-row-edit" data-id="${e.id}" title="Редактировать">✎</button>
+        <button class="clog-row-del" data-id="${e.id}" title="Удалить">×</button>
+        `}
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('.clog-row-edit').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        startEdit(btn.dataset.id);
+      });
+    });
+    list.querySelectorAll('.clog-row-del').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        pendingDeleteId = Number(btn.dataset.id);
+        render(true);
+      });
+    });
+    list.querySelectorAll('.clog-confirm-yes').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.entries = state.entries.filter(e=>String(e.id)!==btn.dataset.id);
+        pendingDeleteId = null;
+        if(String(editingId)===btn.dataset.id){ editingId = null; resetForm(); }
+        save();
+        render();
+      });
+    });
+    list.querySelectorAll('.clog-confirm-no').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        pendingDeleteId = null;
+        render(true);
+      });
+    });
+  }
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function startEdit(id){
+    const e = state.entries.find(x=>String(x.id)===String(id));
+    if(!e) return;
+    editingId = e.id;
+    pendingDeleteId = null;
+    $('clog-in-date').value = toISODate(e.date);
+    $('clog-in-kwh').value = e.kwh;
+    $('clog-in-price').value = e.price;
+    $('clog-in-start').value = e.start || '';
+    $('clog-in-end').value = e.end || '';
+    $('clog-in-note').value = e.note || '';
+    $('clog-form-title').textContent = 'Редактирование записи';
+    $('clog-add-btn').textContent = 'Сохранить изменения';
+    $('clog-cancel-btn').style.display = 'inline-block';
+    $('clog-form-msg').textContent = '';
+    render(true);
+    document.querySelector('.clog-panel').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  function resetForm(){
+    $('clog-in-date').value = todayISO();
+    $('clog-in-kwh').value = '';
+    $('clog-in-price').value = state.defaultPrice;
+    $('clog-in-start').value = '';
+    $('clog-in-end').value = '';
+    $('clog-in-note').value = '';
+    $('clog-form-title').textContent = 'Новая запись';
+    $('clog-add-btn').textContent = 'Добавить запись';
+    $('clog-cancel-btn').style.display = 'none';
+  }
+  function cancelEdit(){
+    editingId = null;
+    resetForm();
+    render(true);
+  }
+  function saveEntry(){
+    const msg = $('clog-form-msg');
+    msg.style.color = 'var(--red)';
+    const date = $('clog-in-date').value || todayISO();
+    const kwh = parseFloat($('clog-in-kwh').value);
+    const price = parseFloat($('clog-in-price').value);
+    const start = $('clog-in-start').value || null;
+    const end = $('clog-in-end').value || null;
+    const note = $('clog-in-note').value.trim();
+    if(!kwh || kwh<=0){ msg.textContent = 'Укажи энергию в кВтч'; return; }
+    if(!price || price<=0){ msg.textContent = 'Укажи цену за кВтч'; return; }
+    const minutes = computeMinutes(start, end);
+    const cost = kwh*price;
+    let doneMsg = 'Записано';
+    if(editingId !== null){
+      const idx = state.entries.findIndex(e=>e.id===editingId);
+      if(idx !== -1){
+        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, note };
+      }
+      editingId = null;
+      doneMsg = 'Изменения сохранены';
+    } else {
+      const entry = { id: Date.now(), date, kwh, price, cost, minutes, start, end, note };
+      state.entries.push(entry);
+    }
+    state.defaultPrice = price;
+    save();
+    resetForm();
+    msg.style.color = 'var(--led)';
+    msg.textContent = doneMsg;
+    setTimeout(()=>{ if(msg.textContent===doneMsg) msg.textContent=''; }, 2000);
+    ledPulse();
+    render();
+  }
+  function exportCsv(){
+    const rows = [['Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Заметка']];
+    [...state.entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+      rows.push([
+        e.date, e.start||'', e.end||'', e.kwh, e.price, e.cost.toFixed(2),
+        e.minutes||'', e.minutes ? (e.kwh/(e.minutes/60)).toFixed(2) : '',
+        e.note||''
+      ]);
+    });
+    const csv = rows.map(r=>r.map(v=>{
+      const s = String(v);
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }).join(',')).join('\n');
+    try{
+      const blob = new Blob(["﻿"+csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'charging-log.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }catch(e){
+      $('clog-form-msg').style.color = 'var(--red)';
+      $('clog-form-msg').textContent = 'Экспорт не удался в этой среде';
+    }
+  }
+  function parseCsvLine(line){
+    const result = [];
+    let cur = '', inQuotes = false;
+    for(let i=0;i<line.length;i++){
+      const c = line[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(line[i+1] === '"'){ cur+='"'; i++; }
+          else inQuotes = false;
+        } else cur += c;
+      } else {
+        if(c === '"') inQuotes = true;
+        else if(c === ','){ result.push(cur); cur=''; }
+        else cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+  function importCsv(file){
+    const msg = $('clog-form-msg');
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        const text = String(ev.target.result).replace(/^﻿/, '');
+        const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+        if(lines.length < 2) throw new Error('empty');
+        // column-name based mapping — works with both old CSVs (no start/end columns)
+        // and new ones, regardless of column order.
+        const header = parseCsvLine(lines[0]).map(h=>h.trim());
+        const idx = (name) => header.indexOf(name);
+        const iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
+              iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
+              iMinutes = idx('Минуты'), iNote = idx('Заметка');
+        const existingKeys = new Set(state.entries.map(e=>[e.date,e.kwh,e.minutes||'',e.note||''].join('|')));
+        let added = 0;
+        for(let i=1;i<lines.length;i++){
+          const cols = parseCsvLine(lines[i]);
+          const date = toISODate(iDate>-1 ? cols[iDate] : cols[0]);
+          const kwh = parseFloat(iKwh>-1 ? cols[iKwh] : cols[1]);
+          const price = parseFloat(iPrice>-1 ? cols[iPrice] : cols[2]);
+          const start = iStart>-1 ? (cols[iStart]||null) : null;
+          const end = iEnd>-1 ? (cols[iEnd]||null) : null;
+          let minutes = (iMinutes>-1 && cols[iMinutes]) ? parseInt(cols[iMinutes],10) : computeMinutes(start,end);
+          const note = iNote>-1 ? (cols[iNote]||'') : '';
+          if(!date || isNaN(kwh) || isNaN(price)) continue;
+          const key = [date, kwh, minutes||'', note].join('|');
+          if(existingKeys.has(key)) continue;
+          state.entries.push({
+            id: Date.now()+i+Math.floor(Math.random()*1000),
+            date, kwh, price, cost: kwh*price,
+            minutes: minutes||null, start, end, note
+          });
+          existingKeys.add(key);
+          added++;
+        }
+        save();
+        render();
+        msg.style.color = 'var(--led)';
+        msg.textContent = added ? ('Импортировано записей: '+added) : 'Новых записей не найдено';
+      }catch(e){
+        msg.style.color = 'var(--red)';
+        msg.textContent = 'Не удалось прочитать этот CSV';
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+  $('clog-add-btn').addEventListener('click', saveEntry);
+  $('clog-cancel-btn').addEventListener('click', cancelEdit);
+  $('clog-export-btn').addEventListener('click', exportCsv);
+  $('clog-import-btn').addEventListener('click', ()=> $('clog-import-file').click());
+  $('clog-import-file').addEventListener('change', (e)=>{
+    if(e.target.files && e.target.files[0]) importCsv(e.target.files[0]);
+    e.target.value = '';
+  });
+  $('clog-today').textContent = new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
+  load();
+})();
+</script>
