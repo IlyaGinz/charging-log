@@ -326,6 +326,10 @@
           <label>Время окончания</label>
           <input type="time" id="clog-in-end">
         </div>
+        <div class="clog-field">
+          <label>Пробег, км (одометр)</label>
+          <input type="number" inputmode="numeric" step="1" min="0" placeholder="напр. 12480" id="clog-in-odo">
+        </div>
         <div class="clog-field" style="grid-column:1 / -1;">
           <label>Заметка (ток, обстоятельства и т.п.)</label>
           <input type="text" placeholder="напр. 14А, после солнца" id="clog-in-note">
@@ -555,6 +559,7 @@
       if(rangeText) metaParts.push(rangeText);
       if(durText) metaParts.push(durText);
       if(powerText) metaParts.push('≈'+powerText);
+      if(e.odo!==null && e.odo!==undefined && e.odo!=='') metaParts.push(Number(e.odo).toLocaleString('ru-RU')+' км');
       const isPending = pendingDeleteId === e.id;
       row.innerHTML = `
         <div class="clog-slot">${sorted.length-idx}</div>
@@ -616,6 +621,7 @@
     $('clog-in-price').value = e.price;
     $('clog-in-start').value = e.start || '';
     $('clog-in-end').value = e.end || '';
+    $('clog-in-odo').value = (e.odo!==null && e.odo!==undefined) ? e.odo : '';
     $('clog-in-note').value = e.note || '';
     $('clog-form-title').textContent = 'Редактирование записи';
     $('clog-add-btn').textContent = 'Сохранить изменения';
@@ -630,6 +636,7 @@
     $('clog-in-price').value = state.defaultPrice;
     $('clog-in-start').value = '';
     $('clog-in-end').value = '';
+    $('clog-in-odo').value = '';
     $('clog-in-note').value = '';
     $('clog-form-title').textContent = 'Новая запись';
     $('clog-add-btn').textContent = 'Добавить запись';
@@ -645,6 +652,8 @@
     const price = parseFloat($('clog-in-price').value);
     const start = $('clog-in-start').value || null;
     const end = $('clog-in-end').value || null;
+    const odoRaw = $('clog-in-odo').value;
+    const odo = (odoRaw==='' || isNaN(parseInt(odoRaw,10))) ? null : parseInt(odoRaw,10);
     const note = $('clog-in-note').value.trim();
     if(!kwh || kwh<=0){ msg.textContent = 'Укажи энергию в кВтч'; return; }
     if(!price || price<=0){ msg.textContent = 'Укажи цену за кВтч'; return; }
@@ -654,12 +663,12 @@
     if(editingId !== null){
       const idx = state.entries.findIndex(e=>e.id===editingId);
       if(idx !== -1){
-        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, note };
+        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, odo, note };
       }
       editingId = null;
       doneMsg = 'Изменения сохранены';
     } else {
-      state.entries.push({ id: Date.now(), date, kwh, price, cost, minutes, start, end, note });
+      state.entries.push({ id: Date.now(), date, kwh, price, cost, minutes, start, end, odo, note });
     }
     state.defaultPrice = price;
     cloudSave();
@@ -673,11 +682,12 @@
 
   // ---- CSV ----
   function exportCsv(){
-    const rows = [['Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Заметка']];
+    const rows = [['Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','Заметка']];
     [...state.entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
       rows.push([
         e.date, e.start||'', e.end||'', e.kwh, e.price, Number(e.cost).toFixed(2),
         e.minutes||'', e.minutes ? (e.kwh/(e.minutes/60)).toFixed(2) : '',
+        (e.odo!==null && e.odo!==undefined) ? e.odo : '',
         e.note||''
       ]);
     });
@@ -724,7 +734,7 @@
         const idx = (name) => header.indexOf(name);
         const iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
               iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
-              iMinutes = idx('Минуты'), iNote = idx('Заметка');
+              iMinutes = idx('Минуты'), iOdo = idx('Пробег км'), iNote = idx('Заметка');
         const existingKeys = new Set(state.entries.map(e=>[e.date,e.kwh,e.minutes||'',e.note||''].join('|')));
         let added = 0;
         for(let i=1;i<lines.length;i++){
@@ -735,13 +745,14 @@
           const start = iStart>-1 ? (cols[iStart]||null) : null;
           const end = iEnd>-1 ? (cols[iEnd]||null) : null;
           let minutes = (iMinutes>-1 && cols[iMinutes]) ? parseInt(cols[iMinutes],10) : computeMinutes(start,end);
+          const odo = (iOdo>-1 && cols[iOdo] && !isNaN(parseInt(cols[iOdo],10))) ? parseInt(cols[iOdo],10) : null;
           const note = iNote>-1 ? (cols[iNote]||'') : '';
           if(!date || isNaN(kwh) || isNaN(price)) continue;
           const key = [date, kwh, minutes||'', note].join('|');
           if(existingKeys.has(key)) continue;
           state.entries.push({
             id: Date.now()+i+Math.floor(Math.random()*1000),
-            date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, note
+            date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note
           });
           existingKeys.add(key);
           added++;
