@@ -55,6 +55,10 @@
   .clog-serial{
     font-size:11px;color:var(--muted-2);text-align:right;line-height:1.6;
   }
+  .clog-version{
+    font-size:11px;color:var(--copper);text-align:right;line-height:1.6;
+    font-weight:600;letter-spacing:.04em;
+  }
   /* sync status indicator */
   .clog-sync{
     display:flex;align-items:center;gap:6px;justify-content:flex-end;
@@ -267,6 +271,7 @@
         <div class="clog-title">Журнал зарядок</div>
       </div>
       <div>
+        <div class="clog-version clog-mono" id="clog-version"></div>
         <div class="clog-serial clog-mono" id="clog-today"></div>
         <div class="clog-sync">
           <span class="clog-sync-dot local" id="clog-sync-dot"></span>
@@ -395,6 +400,10 @@
   //  the one-time setup. They are per-device (each device enters them once),
   //  but they all point at the SAME cloud bin — so the data is shared.
   // ---------------------------------------------------------------------------
+  // App version — bump this on every code change so it's visible in the header
+  // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
+  const APP_VERSION = 'v1.4';
+
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
   const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
@@ -821,7 +830,8 @@
       $('clog-form-msg').textContent = 'Экспорт не удался в этой среде';
     }
   }
-  function parseCsvLine(line){
+  function parseCsvLine(line, delim){
+    delim = delim || ',';
     const result = []; let cur = '', inQuotes = false;
     for(let i=0;i<line.length;i++){
       const c = line[i];
@@ -830,11 +840,23 @@
         else cur += c;
       } else {
         if(c === '"') inQuotes = true;
-        else if(c === ','){ result.push(cur); cur=''; }
+        else if(c === delim){ result.push(cur); cur=''; }
         else cur += c;
       }
     }
     result.push(cur); return result;
+  }
+  // Guess the delimiter from the header line: pick whichever of tab / ; / ,
+  // splits it into the most columns. Handles CSVs Excel saved as TSV or with
+  // a semicolon separator (common on non-US locales).
+  function detectDelimiter(headerLine){
+    const candidates = ['\t', ';', ','];
+    let best = ',', bestCount = 0;
+    candidates.forEach(d=>{
+      const n = parseCsvLine(headerLine, d).length;
+      if(n > bestCount){ bestCount = n; best = d; }
+    });
+    return best;
   }
   function importCsv(file){
     const msg = $('clog-form-msg');
@@ -844,7 +866,8 @@
         const text = String(ev.target.result).replace(/^\ufeff/, '');
         const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
         if(lines.length < 2) throw new Error('empty');
-        const header = parseCsvLine(lines[0]).map(h=>h.trim());
+        const delim = detectDelimiter(lines[0]);
+        const header = parseCsvLine(lines[0], delim).map(h=>h.trim());
         const idx = (name) => header.indexOf(name);
         const iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
               iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
@@ -852,7 +875,7 @@
         const existingKeys = new Set(state.entries.map(e=>[e.date,e.kwh,e.minutes||'',e.note||''].join('|')));
         let added = 0;
         for(let i=1;i<lines.length;i++){
-          const cols = parseCsvLine(lines[i]);
+          const cols = parseCsvLine(lines[i], delim);
           const date = toISODate(iDate>-1 ? cols[iDate] : cols[0]);
           const kwh = parseFloat(iKwh>-1 ? cols[iKwh] : cols[1]);
           const price = parseFloat(iPrice>-1 ? cols[iPrice] : cols[2]);
@@ -914,6 +937,7 @@
 
   // ---- boot ----
   async function boot(){
+    $('clog-version').textContent = APP_VERSION;
     $('clog-today').textContent = new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
     loadCfg();
     loadCache();          // show cached data immediately
