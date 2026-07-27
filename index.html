@@ -402,7 +402,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v1.4';
+  const APP_VERSION = 'v1.6';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -805,10 +805,10 @@
 
   // ---- CSV ----
   function exportCsv(){
-    const rows = [['Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','Заметка']];
+    const rows = [['ID','Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','Заметка']];
     [...state.entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
       rows.push([
-        e.date, e.start||'', e.end||'', e.kwh, e.price, Number(e.cost).toFixed(2),
+        e.id, e.date, e.start||'', e.end||'', e.kwh, e.price, Number(e.cost).toFixed(2),
         e.minutes||'', e.minutes ? (e.kwh/(e.minutes/60)).toFixed(2) : '',
         (e.odo!==null && e.odo!==undefined) ? e.odo : '',
         e.note||''
@@ -869,13 +869,28 @@
         const delim = detectDelimiter(lines[0]);
         const header = parseCsvLine(lines[0], delim).map(h=>h.trim());
         const idx = (name) => header.indexOf(name);
-        const iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
+        const iId = idx('ID'), iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
               iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
               iMinutes = idx('Минуты'), iOdo = idx('Пробег км'), iNote = idx('Заметка');
-        const existingKeys = new Set(state.entries.map(e=>[e.date,e.kwh,e.minutes||'',e.note||''].join('|')));
-        let added = 0;
+        // Matching is HYBRID:
+        //   1. If the row has an ID and it matches an existing entry → update that
+        //      entry in place (bullet-proof: works even if you changed date/kWh/etc).
+        //   2. Otherwise fall back to the natural key "date + start time" — the
+        //      fields you set once when the charge begins and never change. This lets
+        //      you hand-add rows in Excel (leaving ID blank) or gradually fill a row
+        //      out across imports without creating duplicates.
+        //   3. No match at all → append as a new entry.
+        const indexById = new Map();
+        const indexByNat = new Map();
+        const natKey = (date, start) => date + '|' + (start||'');
+        state.entries.forEach((e,i)=>{
+          indexById.set(String(e.id), i);
+          indexByNat.set(natKey(e.date, e.start), i);
+        });
+        let added = 0, updated = 0;
         for(let i=1;i<lines.length;i++){
           const cols = parseCsvLine(lines[i], delim);
+          const rawId = iId>-1 ? String(cols[iId]||'').trim() : '';
           const date = toISODate(iDate>-1 ? cols[iDate] : cols[0]);
           const kwh = parseFloat(iKwh>-1 ? cols[iKwh] : cols[1]);
           const price = parseFloat(iPrice>-1 ? cols[iPrice] : cols[2]);
@@ -885,19 +900,39 @@
           const odo = (iOdo>-1 && cols[iOdo] && !isNaN(parseInt(cols[iOdo],10))) ? parseInt(cols[iOdo],10) : null;
           const note = iNote>-1 ? (cols[iNote]||'') : '';
           if(!date || isNaN(kwh) || isNaN(price)) continue;
-          const key = [date, kwh, minutes||'', note].join('|');
-          if(existingKeys.has(key)) continue;
-          state.entries.push({
-            id: Date.now()+i+Math.floor(Math.random()*1000),
-            date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note
-          });
-          existingKeys.add(key);
-          added++;
+
+          // decide which existing entry (if any) this row refers to
+          let j = -1;
+          if(rawId && indexById.has(rawId)) j = indexById.get(rawId);
+          else if(indexByNat.has(natKey(date, start))) j = indexByNat.get(natKey(date, start));
+
+          if(j !== -1){
+            const prev = state.entries[j];
+            const merged = { ...prev, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
+            if(JSON.stringify(merged) !== JSON.stringify(prev)){
+              state.entries[j] = merged;
+              updated++;
+            }
+          } else {
+            // keep the CSV's ID if it's a valid number and not already taken, else mint a fresh one
+            let newId = (rawId && /^\d+$/.test(rawId) && !indexById.has(rawId))
+              ? parseInt(rawId,10)
+              : Date.now()+i+Math.floor(Math.random()*1000);
+            const entry = { id: newId, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
+            state.entries.push(entry);
+            const at = state.entries.length-1;
+            indexById.set(String(newId), at);
+            indexByNat.set(natKey(date, start), at);
+            added++;
+          }
         }
         cloudSave();
         render();
         msg.style.color = 'var(--led)';
-        msg.textContent = added ? ('Импортировано записей: '+added) : 'Новых записей не найдено';
+        const parts = [];
+        if(added) parts.push('добавлено: '+added);
+        if(updated) parts.push('обновлено: '+updated);
+        msg.textContent = parts.length ? ('Импорт — '+parts.join(', ')) : 'Изменений нет';
       }catch(e){
         msg.style.color = 'var(--red)';
         msg.textContent = 'Не удалось прочитать этот CSV';
