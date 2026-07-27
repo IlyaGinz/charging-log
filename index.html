@@ -3,1005 +3,286 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#1a1815">
-<title>Журнал зарядок</title>
+<title>Макет · карусель графиков</title>
 <style>
+  /* ===== СВЕТЛАЯ тема — только для макета (боевой сайт пока тёмный) ===== */
   :root{
-    --bg:#1a1815;
-    --panel:#232120;
-    --panel-2:#2b2826;
-    --line:rgba(232,228,220,0.09);
-    --line-strong:rgba(232,228,220,0.16);
-    --text:#e9e5dc;
-    --muted:#948d82;
-    --muted-2:#6b655c;
-    --copper:#c88a4a;
-    --copper-dim:rgba(200,138,74,0.16);
-    --led:#4fae72;
-    --led-dim:rgba(79,174,114,0.18);
-    --red:#c85a52;
-    --amber:#d4a24a;
-    --teal:#4a90a4;
+    --bg:#f4f1ea;
+    --panel:#ffffff;
+    --panel-2:#f0ece2;
+    --line:rgba(40,36,30,0.10);
+    --line-strong:rgba(40,36,30,0.18);
+    --text:#2b2620;
+    --muted:#7a7266;
+    --muted-2:#a49b8d;
+    --copper:#b8763a;
+    --copper-dim:rgba(184,118,58,0.14);
+    --led:#3f9d63;
+    --bar:#c88a4a;
+    --bar-soft:rgba(200,138,74,0.85);
+    --line-cost:#5a86b8;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  .clog-root{
-    min-height:100vh;
-    background:
-      radial-gradient(ellipse at 20% -10%, rgba(200,138,74,0.06), transparent 45%),
-      var(--bg);
+  body{
+    background:var(--bg);
     color:var(--text);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: 28px 16px 60px;
     -webkit-font-smoothing:antialiased;
+    padding:20px 12px 50px;
   }
-  .clog-mono{
-    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-    font-variant-numeric: tabular-nums;
+  .m-mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;}
+  /* narrow phone frame so desktop preview is honest */
+  .m-phone{
+    max-width:380px;margin:0 auto;
   }
-  .clog-wrap{max-width:640px;margin:0 auto;}
-  .clog-nameplate{
-    display:flex;align-items:baseline;justify-content:space-between;
-    padding-bottom:14px;margin-bottom:18px;
-    border-bottom:1px solid var(--line-strong);
-  }
-  .clog-eyebrow{
-    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
-    font-weight:600;
-  }
-  .clog-title{
-    font-size:22px;font-weight:700;letter-spacing:.01em;margin-top:4px;
-  }
-  .clog-serial{
-    font-size:11px;color:var(--muted-2);text-align:right;line-height:1.6;
-  }
-  .clog-version{
-    font-size:11px;color:var(--copper);text-align:right;line-height:1.6;
-    font-weight:600;letter-spacing:.04em;
-  }
-  /* sync status indicator */
-  .clog-sync{
-    display:flex;align-items:center;gap:6px;justify-content:flex-end;
-    font-size:11px;color:var(--muted-2);margin-top:3px;
-  }
-  .clog-sync-dot{
-    width:6px;height:6px;border-radius:50%;background:var(--muted-2);
-    transition:background .25s, box-shadow .25s;flex:none;
-  }
-  .clog-sync-dot.ok{background:var(--led);box-shadow:0 0 6px var(--led-dim);}
-  .clog-sync-dot.busy{background:var(--amber);box-shadow:0 0 6px rgba(212,162,74,0.35);animation:clogpulse 1s infinite;}
-  .clog-sync-dot.err{background:var(--red);box-shadow:0 0 6px rgba(200,90,82,0.4);}
-  .clog-sync-dot.local{background:var(--muted-2);}
-  @keyframes clogpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-  .clog-meter{
+  .m-hdr{font-size:12px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em;text-align:center;margin-bottom:14px;}
+
+  .m-card{
     background:var(--panel);
     border:1px solid var(--line);
-    border-radius:10px;
-    padding:22px 20px;
-    margin-bottom:22px;
-    position:relative;
-    overflow:hidden;
+    border-radius:12px;
+    padding:16px 14px 14px;
+    box-shadow:0 1px 3px rgba(40,36,30,0.05);
   }
-  .clog-meter::before{
-    content:"";position:absolute;inset:0 0 auto 0;height:3px;
-    background:linear-gradient(90deg, var(--copper), transparent 70%);
-    opacity:.7;
+
+  /* ---- tabs row (chart type) ---- */
+  .m-tabs{
+    display:flex;gap:6px;margin-bottom:6px;
   }
-  .clog-meter-main{display:flex;align-items:flex-end;gap:10px;}
-  .clog-meter-digits{
-    font-size:44px;font-weight:700;letter-spacing:.01em;color:var(--text);
-    line-height:1;
+  .m-tab{
+    flex:1;text-align:center;
+    font-size:12.5px;font-weight:600;
+    padding:10px 4px;border-radius:8px;
+    background:var(--panel-2);color:var(--muted);
+    border:1px solid transparent;cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    user-select:none;
   }
-  .clog-meter-unit{
-    font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
-    padding-bottom:8px;
+  .m-tab.active{
+    background:var(--copper-dim);color:var(--copper);
+    border-color:var(--copper);
   }
-  .clog-led{
-    width:7px;height:7px;border-radius:50%;
-    background:var(--muted-2);
-    margin-right:6px;display:inline-block;
-    box-shadow:none;
-    transition:background .25s, box-shadow .25s;
+  /* dots indicator (shows position; grows past 3 charts) */
+  .m-dots{display:flex;justify-content:center;gap:6px;margin:8px 0 4px;}
+  .m-dot{width:6px;height:6px;border-radius:50%;background:var(--muted-2);opacity:.4;}
+  .m-dot.on{opacity:1;background:var(--copper);}
+
+  /* ---- year line (updates on year paging + reacts to today btn) ---- */
+  .m-yearline{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:8px;margin:12px 0 10px;
   }
-  .clog-led.on{background:var(--led);box-shadow:0 0 8px var(--led-dim);}
-  .clog-meter-sub{
-    display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;
+  .m-yearsum{
+    font-size:13px;color:var(--text);font-weight:600;
   }
-  .clog-stat-label{
-    font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.09em;
-  }
-  .clog-stat-value{
-    font-size:16px;font-weight:600;margin-top:2px;
-  }
-  .clog-panel{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:10px;
-    padding:18px;
-    margin-bottom:18px;
-  }
-  .clog-panel-head{
-    font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
-    margin-bottom:14px;font-weight:600;
-  }
-  .clog-grid{
-    display:grid;grid-template-columns:1fr 1fr;gap:12px;
-  }
-  .clog-field{display:flex;flex-direction:column;gap:5px;}
-  .clog-field label{
-    font-size:10.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.07em;
-  }
-  .clog-field input{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-radius:6px;
-    color:var(--text);
-    padding:9px 10px;
-    font-size:16px; /* 16px prevents iOS zoom-on-focus */
-    outline:none;
-    width:100%;
-  }
-  .clog-field input:focus{border-color:var(--copper);}
-  .clog-btn{
-    appearance:none;border:1px solid var(--line-strong);
-    background:var(--panel-2);color:var(--text);
-    border-radius:6px;padding:11px 16px;font-size:14px;font-weight:600;
-    cursor:pointer;transition:border-color .15s, background .15s;
-  }
-  .clog-btn:hover{border-color:var(--copper);}
-  .clog-btn-primary{
-    background:var(--copper);border-color:var(--copper);color:#1a1512;
-  }
-  .clog-btn-primary:hover{filter:brightness(1.08);}
-  .clog-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;}
-  .clog-actions-btns{display:flex;gap:8px;flex:none;}
-  .clog-log-head{
-    display:flex;justify-content:space-between;align-items:center;
-    margin-bottom:10px;gap:10px;flex-wrap:wrap;
-  }
-  .clog-log-title{
-    font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;
-  }
-  .clog-log-tools{display:flex;gap:8px;flex-wrap:wrap;}
-  .clog-toolbtn{
-    font-size:11.5px;color:var(--muted);background:transparent;border:1px solid var(--line-strong);
-    border-radius:5px;padding:6px 11px;cursor:pointer;
-  }
-  .clog-toolbtn:hover{color:var(--copper);border-color:var(--copper);}
-  .clog-row{
-    display:flex;align-items:center;gap:12px;
-    padding:12px 4px;
-    border-bottom:1px solid var(--line);
-  }
-  .clog-row:last-child{border-bottom:none;}
-  .clog-row.clog-row-editing{
-    border-left:2px solid var(--copper);
-    padding-left:8px;
-    background:var(--copper-dim);
-    border-radius:6px;
-  }
-  .clog-slot{
-    width:26px;height:26px;flex:none;
-    border:1px solid var(--line-strong);border-radius:5px;
+  .m-yearsum span{color:var(--muted);font-weight:500;}
+  .m-yearnav{display:flex;align-items:center;gap:6px;flex:none;}
+  .m-arrow{
+    width:34px;height:34px;border-radius:8px;
+    border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--text);font-size:16px;line-height:1;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
-    font-size:11px;color:var(--muted-2);
-    background:var(--panel-2);
   }
-  .clog-row-main{flex:1;min-width:0;}
-  .clog-row-date{font-size:13.5px;font-weight:600;}
-  .clog-row-meta{
-    font-size:11.5px;color:var(--muted);margin-top:2px;
-    display:flex;gap:10px;flex-wrap:wrap;
+  .m-arrow:active{background:var(--copper-dim);}
+  .m-today{
+    height:34px;padding:0 10px;border-radius:8px;
+    border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--copper);font-size:12px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;
   }
-  .clog-row-note{font-size:11.5px;color:var(--muted-2);margin-top:3px;font-style:italic;}
-  .clog-row-right{text-align:right;flex:none;}
-  .clog-row-kwh{font-size:14.5px;font-weight:700;}
-  .clog-row-cost{font-size:12px;color:var(--copper);margin-top:2px;}
-  .clog-row-del, .clog-row-edit{
-    background:none;border:none;color:var(--muted-2);cursor:pointer;
-    font-size:17px;padding:4px 6px;line-height:1;flex:none;
+
+  .m-charttitle{
+    font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+    font-weight:600;margin-bottom:2px;
   }
-  .clog-row-del:hover{color:var(--red);}
-  .clog-row-edit:hover{color:var(--copper);}
-  .clog-confirm{
-    display:flex;align-items:center;gap:7px;flex:none;
+
+  /* ---- swipe viewport ---- */
+  .m-swipe{position:relative;overflow:hidden;touch-action:pan-y;}
+  .m-swipe-hint{
+    text-align:center;font-size:10.5px;color:var(--muted-2);margin-top:8px;
+    letter-spacing:.03em;
   }
-  .clog-confirm-text{
-    font-size:11.5px;color:var(--red);white-space:nowrap;
+
+  svg{display:block;width:100%;height:auto;}
+  .m-note{
+    font-size:11.5px;color:var(--muted-2);line-height:1.55;margin-top:18px;
+    background:var(--panel);border:1px dashed var(--line-strong);border-radius:10px;padding:12px 14px;
   }
-  .clog-confirm-yes, .clog-confirm-no{
-    border:1px solid var(--line-strong);border-radius:5px;
-    background:var(--panel-2);color:var(--text);
-    font-size:11.5px;padding:6px 10px;cursor:pointer;
-  }
-  .clog-confirm-yes{border-color:var(--red);color:var(--red);}
-  .clog-confirm-yes:hover{background:var(--red);color:#1a1512;}
-  .clog-confirm-no:hover{border-color:var(--copper);color:var(--copper);}
-  .clog-empty{
-    text-align:center;color:var(--muted-2);font-size:13px;padding:30px 10px;
-  }
-  .clog-note-line{
-    font-size:11.5px;color:var(--muted-2);margin-top:10px;line-height:1.5;
-  }
-  .clog-chart-legend{
-    display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:10px;
-  }
-  .clog-chart-swatch{
-    display:inline-block;width:10px;height:10px;margin-right:5px;border-radius:2px;vertical-align:middle;
-  }
-  .clog-chart-svg{width:100%;height:auto;display:block;}
-  .clog-chart-axis{font-size:9px;fill:var(--muted-2);font-family:ui-monospace,monospace;}
-  .clog-chart-val{font-size:8.5px;fill:var(--muted-2);font-family:ui-monospace,monospace;}
-  .clog-chart-grid{stroke:var(--line-strong);stroke-width:1;}
-  /* setup banner shown when no cloud key configured */
-  .clog-setup{
-    background:var(--panel);border:1px solid var(--amber);
-    border-radius:10px;padding:16px 18px;margin-bottom:18px;
-    font-size:13px;line-height:1.55;color:var(--text);
-  }
-  .clog-setup b{color:var(--amber);}
-  .clog-setup code{
-    background:var(--panel-2);padding:1px 5px;border-radius:4px;
-    font-family:ui-monospace,monospace;font-size:12px;color:var(--copper);
-  }
-  .clog-setup-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
-  .clog-setup-row input{
-    flex:1;min-width:180px;background:var(--panel-2);border:1px solid var(--line);
-    border-radius:6px;color:var(--text);padding:9px 10px;font-size:15px;outline:none;
-    font-family:ui-monospace,monospace;
-  }
-  .clog-setup-row input:focus{border-color:var(--amber);}
-  @media (max-width:420px){
-    .clog-grid{grid-template-columns:1fr;}
-    .clog-meter-digits{font-size:36px;}
-    .clog-nameplate{flex-direction:column;gap:6px;}
-    .clog-serial{text-align:left;}
-    .clog-sync{justify-content:flex-start;}
-    .clog-actions{flex-direction:column;align-items:stretch;}
-    .clog-actions-btns{justify-content:flex-end;}
-  }
+  .m-note b{color:var(--copper);}
+  .m-legend{display:flex;gap:14px;justify-content:center;margin-top:6px;font-size:11px;color:var(--muted);}
+  .m-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle;}
 </style>
 </head>
 <body>
-<div class="clog-root">
-  <div class="clog-wrap">
-    <div class="clog-nameplate">
-      <div>
-        <div class="clog-eyebrow">Домашний учёт · общий журнал</div>
-        <div class="clog-title">Журнал зарядок</div>
-      </div>
-      <div>
-        <div class="clog-version clog-mono" id="clog-version"></div>
-        <div class="clog-serial clog-mono" id="clog-today"></div>
-        <div class="clog-sync">
-          <span class="clog-sync-dot local" id="clog-sync-dot"></span>
-          <span id="clog-sync-text">локально</span>
-        </div>
+<div class="m-phone">
+  <div class="m-hdr">Макет · как ляжет на телефоне (≈380px)</div>
+
+  <div class="m-card">
+    <!-- TABS: chart type. Full-width, tappable. Swipe past 3 = dots grow. -->
+    <div class="m-tabs" id="mtabs">
+      <div class="m-tab active" data-i="0">Расход</div>
+      <div class="m-tab" data-i="1">100 км</div>
+      <div class="m-tab" data-i="2">Мощность</div>
+    </div>
+    <div class="m-dots" id="mdots">
+      <div class="m-dot on"></div><div class="m-dot"></div><div class="m-dot"></div>
+    </div>
+
+    <!-- YEAR line: own row, updates on paging, today btn resets it too -->
+    <div class="m-yearline">
+      <div class="m-yearsum" id="myearsum">2026 · <span class="m-mono">148 кВтч</span> · <span class="m-mono">95 ₪</span></div>
+      <div class="m-yearnav">
+        <button class="m-arrow" id="mprev">‹</button>
+        <button class="m-today" id="mtoday">тек. год</button>
+        <button class="m-arrow" id="mnext">›</button>
       </div>
     </div>
 
-    <!-- Setup banner: appears only until a cloud key is saved -->
-    <div class="clog-setup" id="clog-setup" style="display:none;">
-      <div>Чтобы журнал синхронизировался между всеми устройствами, вставь <b>Master Key</b> из JSONBin. Хранилище уже привязано — вводится только ключ, один раз на устройство.</div>
-      <div style="margin-top:10px;color:var(--muted);">
-        Открой на <b>jsonbin.io</b> раздел <b>API Keys</b> → скопируй <b>Master Key</b> (начинается с <code>$2a$10$</code>) → вставь ниже и нажми «Подключить». На телефоне жены, лаптопе и компе — тот же ключ, и все видят один журнал.
-      </div>
-      <div class="clog-setup-row">
-        <input type="text" id="clog-setup-key" placeholder="Master Key ($2a$10$...)" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <button class="clog-btn clog-btn-primary" id="clog-setup-save">Подключить</button>
-      </div>
-      <div class="clog-note-line" id="clog-setup-msg"></div>
-    </div>
+    <div class="m-charttitle" id="mtitle">Расход энергии и стоимость · по месяцам</div>
 
-    <div class="clog-meter">
-      <div class="clog-meter-main">
-        <span class="clog-led" id="clog-led"></span>
-        <span class="clog-meter-digits clog-mono" id="clog-total-kwh">0.00</span>
-        <span class="clog-meter-unit">кВтч всего</span>
-      </div>
-      <div class="clog-meter-sub">
-        <div>
-          <div class="clog-stat-label">Сессий</div>
-          <div class="clog-stat-value clog-mono" id="clog-stat-count">0</div>
-        </div>
-        <div>
-          <div class="clog-stat-label">Итого, ₪</div>
-          <div class="clog-stat-value clog-mono" id="clog-stat-cost">0.00</div>
-        </div>
-        <div>
-          <div class="clog-stat-label">Средняя, кВтч</div>
-          <div class="clog-stat-value clog-mono" id="clog-stat-avgkwh">–</div>
-        </div>
-        <div>
-          <div class="clog-stat-label">Средняя мощность</div>
-          <div class="clog-stat-value clog-mono" id="clog-stat-avgpower">–</div>
-        </div>
-      </div>
+    <!-- SWIPE viewport: swipe left/right changes chart type -->
+    <div class="m-swipe" id="mswipe">
+      <div id="mchart"></div>
     </div>
+    <div class="m-legend" id="mlegend">
+      <span><i style="background:var(--bar)"></i>кВтч</span>
+      <span><i style="background:var(--line-cost)"></i>₪ (округл. вверх)</span>
+    </div>
+    <div class="m-swipe-hint">← свайп по графику меняет тип · стрелки листают годы →</div>
+  </div>
 
-    <div class="clog-panel">
-      <div class="clog-panel-head">По месяцам</div>
-      <div id="clog-chart"></div>
-    </div>
-
-    <div class="clog-panel">
-      <div class="clog-panel-head" id="clog-form-title">Новая запись</div>
-      <div class="clog-grid">
-        <div class="clog-field">
-          <label>Дата</label>
-          <input type="date" id="clog-in-date">
-        </div>
-        <div class="clog-field">
-          <label>Энергия, кВтч</label>
-          <input type="number" inputmode="decimal" step="0.01" min="0" placeholder="22.15" id="clog-in-kwh">
-        </div>
-        <div class="clog-field">
-          <label>Цена, ₪/кВтч</label>
-          <input type="number" inputmode="decimal" step="0.01" min="0" id="clog-in-price">
-        </div>
-        <div class="clog-field">
-          <label>Время начала</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" inputmode="numeric" min="0" max="23" placeholder="ЧЧ" id="clog-in-start-h" style="flex:1;min-width:0;">
-            <span class="clog-mono" style="color:var(--muted-2);">:</span>
-            <input type="number" inputmode="numeric" min="0" max="59" placeholder="ММ" id="clog-in-start-m" style="flex:1;min-width:0;">
-          </div>
-        </div>
-        <div class="clog-field">
-          <label>Время окончания</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" inputmode="numeric" min="0" max="23" placeholder="ЧЧ" id="clog-in-end-h" style="flex:1;min-width:0;">
-            <span class="clog-mono" style="color:var(--muted-2);">:</span>
-            <input type="number" inputmode="numeric" min="0" max="59" placeholder="ММ" id="clog-in-end-m" style="flex:1;min-width:0;">
-          </div>
-        </div>
-        <div class="clog-field">
-          <label>Пробег, км (одометр)</label>
-          <input type="number" inputmode="numeric" step="1" min="0" placeholder="напр. 12480" id="clog-in-odo">
-        </div>
-        <div class="clog-field" style="grid-column:1 / -1;">
-          <label>Заметка (ток, обстоятельства и т.п.)</label>
-          <input type="text" placeholder="напр. 14А, после солнца" id="clog-in-note">
-        </div>
-      </div>
-      <div class="clog-actions">
-        <span class="clog-note-line" id="clog-form-msg"></span>
-        <div class="clog-actions-btns">
-          <button class="clog-btn" id="clog-cancel-btn" style="display:none;">Отмена</button>
-          <button class="clog-btn clog-btn-primary" id="clog-add-btn">Добавить запись</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="clog-panel">
-      <div class="clog-log-head">
-        <div class="clog-log-title">Записи</div>
-        <div class="clog-log-tools">
-          <button class="clog-toolbtn" id="clog-refresh-btn">Обновить</button>
-          <button class="clog-toolbtn" id="clog-import-btn">Импорт CSV</button>
-          <button class="clog-toolbtn" id="clog-export-btn">Экспорт CSV</button>
-          <input type="file" id="clog-import-file" accept=".csv" style="display:none">
-        </div>
-      </div>
-      <div id="clog-list"></div>
-    </div>
-
-    <div class="clog-note-line" id="clog-footnote">
-      Общий журнал: любое устройство с этим ключом видит одни и те же записи. «Экспорт CSV» — резервная копия на всякий случай.
-    </div>
+  <div class="m-note">
+    Это <b>чертёж каркаса</b>, данные вымышленные. Пощупай на телефоне:
+    крупные вкладки типа графика, свайп влево/вправо по графику, стрелки годов и «тек. год»,
+    годовая подпись отдельной строкой (меняется при листании годов).
+    Боевой сайт пока остаётся тёмным — тут светлая тема только чтобы разглядеть.
   </div>
 </div>
 
 <script>
 (function(){
-  // ---------------------------------------------------------------------------
-  //  CONFIG STORE
-  //  The JSONBin Bin ID + key are saved in this browser's localStorage after
-  //  the one-time setup. They are per-device (each device enters them once),
-  //  but they all point at the SAME cloud bin — so the data is shared.
-  // ---------------------------------------------------------------------------
-  // App version — bump this on every code change so it's visible in the header
-  // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v1.6';
+  // ---- mock data per chart type × year (заглушки) ----
+  const MONTHS = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const DATA = {
+    2025: { kwh:[0,0,0,0,12,20,18,25,15,10,8,5], cost:[0,0,0,0,8,13,12,16,10,7,6,4] },
+    2026: { kwh:[9,14,11,16,22,19,18,12,0,0,0,0], cost:[6,9,8,11,15,13,12,8,0,0,0,0] }
+  };
+  const YEARS = [2025, 2026];
+  const CUR_YEAR = 2026; // pretend "current" year for the today button
+  const TITLES = [
+    'Расход энергии и стоимость · по месяцам',
+    'Расход на 100 км · по месяцам',
+    'Средняя мощность сессий · по месяцам'
+  ];
+  const LEGENDS = [
+    '<span><i style="background:var(--bar)"></i>кВтч</span><span><i style="background:var(--line-cost)"></i>₪ (округл. вверх)</span>',
+    '<span><i style="background:var(--bar)"></i>кВтч/100км</span>',
+    '<span><i style="background:var(--bar)"></i>кВт средн.</span>'
+  ];
 
-  const CFG_KEY = 'charging-log-cfg-v1';
-  const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
-  const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+  let chartIdx = 0;              // 0..2 chart type
+  let yearIdx = YEARS.indexOf(CUR_YEAR); // index into YEARS
 
-  // Bin ID baked into the file — same shared bin for every device.
-  // Only the Master Key needs to be entered per device.
-  const BUILT_IN_BIN_ID = '6a65b772da38895dfe90dc1b';
+  const $ = (id)=>document.getElementById(id);
 
-  let cfg = { binId: BUILT_IN_BIN_ID, key: '' };
-  let state = { defaultPrice: 0.65, entries: [] };
-  let pendingDeleteId = null;
-  let editingId = null;
-  let saving = false;
+  function ceil(n){ return Math.ceil(n); }
 
-  const $ = (id) => document.getElementById(id);
-  const todayISO = () => new Date().toISOString().slice(0,10);
+  function renderChart(){
+    const year = YEARS[yearIdx];
+    const d = DATA[year] || {kwh:new Array(12).fill(0), cost:new Array(12).fill(0)};
+    // pick series depending on chart type (mock: reuse kwh scaled)
+    let bars, costs=null;
+    if(chartIdx===0){ bars = d.kwh; costs = d.cost.map(ceil); }
+    else if(chartIdx===1){ bars = d.kwh.map(v=> v? +(v*0.9).toFixed(1):0); }
+    else { bars = d.kwh.map(v=> v? +(v*0.5+3).toFixed(1):0); }
 
-  function fmt(n, d){
-    if(n === null || n === undefined || isNaN(n)) return '–';
-    return Number(n).toFixed(d===undefined?2:d);
-  }
-  function ledPulse(){
-    const led = $('clog-led');
-    led.classList.add('on');
-    setTimeout(()=>led.classList.remove('on'), 900);
-  }
-  function setSync(status, text){
-    const dot = $('clog-sync-dot');
-    dot.className = 'clog-sync-dot ' + status;
-    $('clog-sync-text').textContent = text;
-  }
-  function countUp(el, from, to, decimals){
-    const dur = 550, start = performance.now();
-    from = isNaN(from)?0:from;
-    function step(t){
-      const p = Math.min(1, (t-start)/dur);
-      const eased = 1 - Math.pow(1-p, 3);
-      const val = from + (to-from)*eased;
-      el.textContent = fmt(val, decimals);
-      if(p<1) requestAnimationFrame(step);
-      else el.textContent = fmt(to, decimals);
+    const W=352, H=210, padL=28, padR=10, padB=34, padT=22;
+    const plotW=W-padL-padR, plotH=H-padT-padB;
+    const maxBar=Math.max(1,...bars);
+    const bw=plotW/12*0.6, gap=plotW/12;
+    let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    // y gridlines
+    for(let g=0; g<=2; g++){
+      const y=padT+plotH-(plotH*g/2);
+      svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+      svg+=`<text x="4" y="${y+3}" font-size="9" fill="var(--muted-2)">${Math.round(maxBar*g/2)}</text>`;
     }
-    requestAnimationFrame(step);
-  }
-  function hmToStr(h, m){
-    if(h===''||h===null||h===undefined||isNaN(parseInt(h,10))) return '';
-    const hh = Math.max(0, Math.min(23, parseInt(h,10)));
-    const mm = Math.max(0, Math.min(59, parseInt(m||0,10)||0));
-    return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
-  }
-  function strToHM(str, hEl, mEl){
-    if(!str){ hEl.value=''; mEl.value=''; return; }
-    const parts = String(str).split(':');
-    hEl.value = parts[0]!==undefined ? parseInt(parts[0],10) : '';
-    mEl.value = parts[1]!==undefined ? parseInt(parts[1],10) : '';
-  }
-  function computeMinutes(start, end){
-    if(!start || !end) return null;
-    const [sh,sm] = start.split(':').map(Number);
-    const [eh,em] = end.split(':').map(Number);
-    if(isNaN(sh)||isNaN(sm)||isNaN(eh)||isNaN(em)) return null;
-    let mins = (eh*60+em) - (sh*60+sm);
-    if(mins <= 0) mins += 24*60;
-    return mins;
-  }
-  function toISODate(str){
-    if(!str) return '';
-    str = String(str).trim();
-    if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if(m){
-      const [, d, mo, y] = m;
-      return y+'-'+mo.padStart(2,'0')+'-'+d.padStart(2,'0');
-    }
-    return str;
-  }
-
-  // ---- config persistence (localStorage, per-device) ----
-  function loadCfg(){
-    try{
-      const raw = localStorage.getItem(CFG_KEY);
-      if(raw){ const p = JSON.parse(raw); cfg.key = p.key||''; }
-    }catch(e){}
-    // Bin ID is fixed in the file — ignore any old value that might be stored
-    cfg.binId = BUILT_IN_BIN_ID;
-  }
-  function saveCfg(){
-    try{ localStorage.setItem(CFG_KEY, JSON.stringify({ key: cfg.key })); }catch(e){}
-  }
-  function haveCloud(){ return !!(cfg.binId && cfg.key); }
-
-  // ---- offline cache (so the app still shows data with no connection) ----
-  function saveCache(){
-    try{ localStorage.setItem(CACHE_KEY, JSON.stringify(state)); }catch(e){}
-  }
-  function loadCache(){
-    try{
-      const raw = localStorage.getItem(CACHE_KEY);
-      if(raw){ const p = JSON.parse(raw);
-        state.defaultPrice = p.defaultPrice ?? 0.65;
-        state.entries = Array.isArray(p.entries) ? p.entries : [];
+    // bars + value labels + month labels
+    bars.forEach((v,i)=>{
+      const x=padL+gap*i+(gap-bw)/2;
+      const h=v>0?(v/maxBar)*plotH:0;
+      const y=padT+plotH-h;
+      if(v>0){
+        svg+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" fill="var(--bar-soft)"/>`;
+        svg+=`<text x="${x+bw/2}" y="${y-4}" font-size="8.5" fill="var(--text)" text-anchor="middle" font-weight="600">${v}</text>`;
       }
-    }catch(e){}
-  }
-
-  function migrateDates(){
-    let migrated = false;
-    state.entries.forEach(e=>{
-      const iso = toISODate(e.date);
-      if(iso !== e.date){ e.date = iso; migrated = true; }
+      svg+=`<text x="${padL+gap*i+gap/2}" y="${H-padB+16}" font-size="11" fill="var(--muted)" text-anchor="middle">${MONTHS[i]} ${String(year).slice(2)}</text>`;
     });
-    return migrated;
-  }
-
-  // ---- cloud read / write ----
-  async function cloudLoad(){
-    if(!haveCloud()) return false;
-    setSync('busy','синхронизация…');
-    try{
-      const res = await fetch(JSONBIN_BASE+'/'+cfg.binId+'/latest', {
-        headers: { 'X-Master-Key': cfg.key, 'X-Bin-Meta': 'false' }
-      });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json();
-      // JSONBin wraps the stored value; with X-Bin-Meta:false it returns the raw record
-      const rec = (data && data.record !== undefined) ? data.record : data;
-      state.defaultPrice = (rec && rec.defaultPrice) ? rec.defaultPrice : 0.65;
-      state.entries = (rec && Array.isArray(rec.entries)) ? rec.entries : [];
-      if(migrateDates()) await cloudSave(true);
-      saveCache();
-      setSync('ok','синхронизировано');
-      return true;
-    }catch(e){
-      // fall back to local cache; keep working offline
-      loadCache();
-      setSync('err','нет связи — локально');
-      return false;
-    }
-  }
-
-  async function cloudSave(silent){
-    saveCache(); // always keep a local copy first
-    if(!haveCloud()){ setSync('local','локально (нет ключа)'); return; }
-    if(!silent) setSync('busy','сохранение…');
-    saving = true;
-    try{
-      const res = await fetch(JSONBIN_BASE+'/'+cfg.binId, {
-        method:'PUT',
-        headers:{ 'Content-Type':'application/json', 'X-Master-Key': cfg.key },
-        body: JSON.stringify({ defaultPrice: state.defaultPrice, entries: state.entries })
-      });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      setSync('ok','синхронизировано');
-    }catch(e){
-      setSync('err','не сохранилось в облако');
-    }finally{
-      saving = false;
-    }
-  }
-
-  const MONTH_ABBR = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-  function monthLabel(key){
-    const [y,m] = key.split('-').map(Number);
-    return MONTH_ABBR[(m||1)-1]+' '+String(y).slice(2);
-  }
-  function monthlyAgg(){
-    const map = {};
-    state.entries.forEach(e=>{
-      const mKey = (e.date||'').slice(0,7);
-      if(!/^\d{4}-\d{2}$/.test(mKey)) return;
-      if(!map[mKey]) map[mKey] = { kwh:0, cost:0, count:0 };
-      map[mKey].kwh += Number(e.kwh)||0;
-      map[mKey].cost += Number(e.cost)||0;
-      map[mKey].count += 1;
-    });
-    return Object.keys(map).sort().map(k=>({ month:k, ...map[k] }));
-  }
-  function renderMonthlyChart(){
-    const wrap = $('clog-chart');
-    if(!wrap) return;
-    const data = monthlyAgg();
-    if(!data.length){
-      wrap.innerHTML = '<div class="clog-empty">Пока недостаточно данных для графика.</div>';
-      return;
-    }
-    const W = 640, H = 220, padL = 10, padR = 10, padB = 30, padT = 18;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const n = data.length, slot = plotW / n;
-    const barW = Math.max(10, Math.min(38, slot*0.42));
-    const maxKwh = Math.max(...data.map(d=>d.kwh), 0.01);
-    const maxCost = Math.max(...data.map(d=>d.cost), 0.01);
-
-    const bars = data.map((d,i)=>{
-      const cx = padL + slot*i + slot/2;
-      const h = (d.kwh/maxKwh) * plotH;
-      return `<rect x="${(cx-barW/2).toFixed(1)}" y="${(padT+plotH-h).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--teal)" opacity="0.85"></rect>`;
-    }).join('');
-
-    const points = data.map((d,i)=>{
-      const cx = padL + slot*i + slot/2;
-      const cy = padT + plotH - (d.cost/maxCost)*plotH;
-      return [cx, cy];
-    });
-    const linePath = points.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
-    const dots = points.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--copper)"></circle>`).join('');
-
-    const labels = data.map((d,i)=>{
-      const cx = padL + slot*i + slot/2;
-      return `<text x="${cx.toFixed(1)}" y="${H-10}" text-anchor="middle" class="clog-chart-axis">${monthLabel(d.month)}</text>`;
-    }).join('');
-
-    const kwhLabels = data.map((d,i)=>{
-      const cx = padL + slot*i + slot/2;
-      const h = (d.kwh/maxKwh) * plotH;
-      return `<text x="${cx.toFixed(1)}" y="${(padT+plotH-h-5).toFixed(1)}" text-anchor="middle" class="clog-chart-val">${fmt(d.kwh,0)}</text>`;
-    }).join('');
-
-    const baseline = `<line x1="${padL}" y1="${(padT+plotH).toFixed(1)}" x2="${(padL+plotW).toFixed(1)}" y2="${(padT+plotH).toFixed(1)}" class="clog-chart-grid"></line>`;
-
-    wrap.innerHTML = `
-      <div class="clog-chart-legend">
-        <span><span class="clog-chart-swatch" style="background:var(--teal);"></span>кВтч</span>
-        <span><span class="clog-chart-swatch" style="background:var(--copper);border-radius:50%;"></span>₪</span>
-      </div>
-      <svg viewBox="0 0 ${W} ${H}" class="clog-chart-svg" preserveAspectRatio="xMidYMid meet">
-        ${baseline}
-        ${bars}
-        ${kwhLabels}
-        <path d="${linePath}" fill="none" stroke="var(--copper)" stroke-width="2"></path>
-        ${dots}
-        ${labels}
-      </svg>
-    `;
-  }
-
-  function computeStats(){
-    const entries = state.entries;
-    const count = entries.length;
-    const totalKwh = entries.reduce((s,e)=>s+e.kwh,0);
-    const totalCost = entries.reduce((s,e)=>s+e.cost,0);
-    const withDur = entries.filter(e=>e.minutes && e.minutes>0);
-    const avgPower = withDur.length
-      ? withDur.reduce((s,e)=>s+(e.kwh/(e.minutes/60)),0)/withDur.length
-      : null;
-    return { count, totalKwh, totalCost, avgKwh: count ? totalKwh/count : null, avgPower };
-  }
-
-  function render(skipAnim){
-    const s = computeStats();
-    renderMonthlyChart();
-    const totalEl = $('clog-total-kwh');
-    const prevTotal = parseFloat(totalEl.textContent) || 0;
-    if(skipAnim) totalEl.textContent = fmt(s.totalKwh,2);
-    else countUp(totalEl, prevTotal, s.totalKwh, 2);
-    $('clog-stat-count').textContent = s.count;
-    $('clog-stat-cost').textContent = fmt(s.totalCost,2);
-    $('clog-stat-avgkwh').textContent = s.avgKwh===null ? '–' : fmt(s.avgKwh,1);
-    $('clog-stat-avgpower').textContent = s.avgPower===null ? '–' : fmt(s.avgPower,1)+' кВт';
-
-    const list = $('clog-list');
-    list.innerHTML = '';
-    if(!state.entries.length){
-      list.innerHTML = '<div class="clog-empty">Пока пусто — добавь первую сессию выше.</div>';
-      return;
-    }
-    const sorted = [...state.entries].sort((a,b)=> (b.date+b.id) > (a.date+a.id) ? 1 : -1);
-    sorted.forEach((e, idx) => {
-      const row = document.createElement('div');
-      row.className = 'clog-row' + (String(e.id)===String(editingId) ? ' clog-row-editing' : '');
-      const durText = e.minutes ? Math.floor(e.minutes/60)+'ч '+(e.minutes%60)+'м' : null;
-      const powerText = e.minutes ? fmt(e.kwh/(e.minutes/60),1)+' кВт' : null;
-      const rangeText = (e.start && e.end) ? (e.start+'–'+e.end) : null;
-      const metaParts = [Number(e.price).toFixed(2)+' ₪/кВтч'];
-      if(rangeText) metaParts.push(rangeText);
-      if(durText) metaParts.push(durText);
-      if(powerText) metaParts.push('≈'+powerText);
-      if(e.odo!==null && e.odo!==undefined && e.odo!=='') metaParts.push(Number(e.odo).toLocaleString('ru-RU')+' км');
-      const isPending = pendingDeleteId === e.id;
-      row.innerHTML = `
-        <div class="clog-slot">${sorted.length-idx}</div>
-        <div class="clog-row-main">
-          <div class="clog-row-date">${e.date}</div>
-          <div class="clog-row-meta">${metaParts.map(m=>'<span>'+m+'</span>').join('')}</div>
-          ${e.note ? '<div class="clog-row-note">'+escapeHtml(e.note)+'</div>' : ''}
-        </div>
-        ${isPending ? `
-        <div class="clog-confirm">
-          <span class="clog-confirm-text">Удалить?</span>
-          <button class="clog-confirm-yes" data-id="${e.id}">Да</button>
-          <button class="clog-confirm-no" data-id="${e.id}">Нет</button>
-        </div>
-        ` : `
-        <div class="clog-row-right">
-          <div class="clog-row-kwh clog-mono">${fmt(e.kwh,2)}</div>
-          <div class="clog-row-cost clog-mono">${fmt(e.cost,2)} ₪</div>
-        </div>
-        <button class="clog-row-edit" data-id="${e.id}" title="Редактировать">✎</button>
-        <button class="clog-row-del" data-id="${e.id}" title="Удалить">×</button>
-        `}
-      `;
-      list.appendChild(row);
-    });
-    list.querySelectorAll('.clog-row-edit').forEach(btn=>{
-      btn.addEventListener('click', ()=> startEdit(btn.dataset.id));
-    });
-    list.querySelectorAll('.clog-row-del').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ pendingDeleteId = Number(btn.dataset.id); render(true); });
-    });
-    list.querySelectorAll('.clog-confirm-yes').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        state.entries = state.entries.filter(e=>String(e.id)!==btn.dataset.id);
-        pendingDeleteId = null;
-        if(String(editingId)===btn.dataset.id){ editingId = null; resetForm(); }
-        cloudSave();
-        render();
-      });
-    });
-    list.querySelectorAll('.clog-confirm-no').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ pendingDeleteId = null; render(true); });
-    });
-  }
-
-  function escapeHtml(str){
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
-  }
-
-  function startEdit(id){
-    const e = state.entries.find(x=>String(x.id)===String(id));
-    if(!e) return;
-    editingId = e.id;
-    pendingDeleteId = null;
-    $('clog-in-date').value = toISODate(e.date);
-    $('clog-in-kwh').value = e.kwh;
-    $('clog-in-price').value = e.price;
-    strToHM(e.start, $('clog-in-start-h'), $('clog-in-start-m'));
-    strToHM(e.end, $('clog-in-end-h'), $('clog-in-end-m'));
-    $('clog-in-odo').value = (e.odo!==null && e.odo!==undefined) ? e.odo : '';
-    $('clog-in-note').value = e.note || '';
-    $('clog-form-title').textContent = 'Редактирование записи';
-    $('clog-add-btn').textContent = 'Сохранить изменения';
-    $('clog-cancel-btn').style.display = 'inline-block';
-    $('clog-form-msg').textContent = '';
-    render(true);
-    document.querySelector('.clog-panel').scrollIntoView({behavior:'smooth', block:'start'});
-  }
-  function resetForm(){
-    $('clog-in-date').value = todayISO();
-    $('clog-in-kwh').value = '';
-    $('clog-in-price').value = state.defaultPrice;
-    $('clog-in-start-h').value = '';
-    $('clog-in-start-m').value = '';
-    $('clog-in-end-h').value = '';
-    $('clog-in-end-m').value = '';
-    $('clog-in-odo').value = '';
-    $('clog-in-note').value = '';
-    $('clog-form-title').textContent = 'Новая запись';
-    $('clog-add-btn').textContent = 'Добавить запись';
-    $('clog-cancel-btn').style.display = 'none';
-  }
-  function cancelEdit(){ editingId = null; resetForm(); render(true); }
-
-  function saveEntry(){
-    const msg = $('clog-form-msg');
-    msg.style.color = 'var(--red)';
-    const date = $('clog-in-date').value || todayISO();
-    const kwh = parseFloat($('clog-in-kwh').value);
-    const price = parseFloat($('clog-in-price').value);
-    const start = hmToStr($('clog-in-start-h').value, $('clog-in-start-m').value) || null;
-    const end = hmToStr($('clog-in-end-h').value, $('clog-in-end-m').value) || null;
-    const odoRaw = $('clog-in-odo').value;
-    const odo = (odoRaw==='' || isNaN(parseInt(odoRaw,10))) ? null : parseInt(odoRaw,10);
-    const note = $('clog-in-note').value.trim();
-    if(!kwh || kwh<=0){ msg.textContent = 'Укажи энергию в кВтч'; return; }
-    if(!price || price<=0){ msg.textContent = 'Укажи цену за кВтч'; return; }
-    const minutes = computeMinutes(start, end);
-    const cost = kwh*price;
-    let doneMsg = 'Записано';
-    if(editingId !== null){
-      const idx = state.entries.findIndex(e=>e.id===editingId);
-      if(idx !== -1){
-        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, odo, note };
-      }
-      editingId = null;
-      doneMsg = 'Изменения сохранены';
-    } else {
-      state.entries.push({ id: Date.now(), date, kwh, price, cost, minutes, start, end, odo, note });
-    }
-    state.defaultPrice = price;
-    cloudSave();
-    resetForm();
-    msg.style.color = 'var(--led)';
-    msg.textContent = doneMsg;
-    setTimeout(()=>{ if(msg.textContent===doneMsg) msg.textContent=''; }, 2000);
-    ledPulse();
-    render();
-  }
-
-  // ---- CSV ----
-  function exportCsv(){
-    const rows = [['ID','Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','Заметка']];
-    [...state.entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
-      rows.push([
-        e.id, e.date, e.start||'', e.end||'', e.kwh, e.price, Number(e.cost).toFixed(2),
-        e.minutes||'', e.minutes ? (e.kwh/(e.minutes/60)).toFixed(2) : '',
-        (e.odo!==null && e.odo!==undefined) ? e.odo : '',
-        e.note||''
-      ]);
-    });
-    const csv = rows.map(r=>r.map(v=>{
-      const s = String(v);
-      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
-    }).join(',')).join('\n');
-    try{
-      const blob = new Blob(["\ufeff"+csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'charging-log.csv';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }catch(e){
-      $('clog-form-msg').style.color = 'var(--red)';
-      $('clog-form-msg').textContent = 'Экспорт не удался в этой среде';
-    }
-  }
-  function parseCsvLine(line, delim){
-    delim = delim || ',';
-    const result = []; let cur = '', inQuotes = false;
-    for(let i=0;i<line.length;i++){
-      const c = line[i];
-      if(inQuotes){
-        if(c === '"'){ if(line[i+1] === '"'){ cur+='"'; i++; } else inQuotes = false; }
-        else cur += c;
-      } else {
-        if(c === '"') inQuotes = true;
-        else if(c === delim){ result.push(cur); cur=''; }
-        else cur += c;
-      }
-    }
-    result.push(cur); return result;
-  }
-  // Guess the delimiter from the header line: pick whichever of tab / ; / ,
-  // splits it into the most columns. Handles CSVs Excel saved as TSV or with
-  // a semicolon separator (common on non-US locales).
-  function detectDelimiter(headerLine){
-    const candidates = ['\t', ';', ','];
-    let best = ',', bestCount = 0;
-    candidates.forEach(d=>{
-      const n = parseCsvLine(headerLine, d).length;
-      if(n > bestCount){ bestCount = n; best = d; }
-    });
-    return best;
-  }
-  function importCsv(file){
-    const msg = $('clog-form-msg');
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      try{
-        const text = String(ev.target.result).replace(/^\ufeff/, '');
-        const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
-        if(lines.length < 2) throw new Error('empty');
-        const delim = detectDelimiter(lines[0]);
-        const header = parseCsvLine(lines[0], delim).map(h=>h.trim());
-        const idx = (name) => header.indexOf(name);
-        const iId = idx('ID'), iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
-              iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
-              iMinutes = idx('Минуты'), iOdo = idx('Пробег км'), iNote = idx('Заметка');
-        // Matching is HYBRID:
-        //   1. If the row has an ID and it matches an existing entry → update that
-        //      entry in place (bullet-proof: works even if you changed date/kWh/etc).
-        //   2. Otherwise fall back to the natural key "date + start time" — the
-        //      fields you set once when the charge begins and never change. This lets
-        //      you hand-add rows in Excel (leaving ID blank) or gradually fill a row
-        //      out across imports without creating duplicates.
-        //   3. No match at all → append as a new entry.
-        const indexById = new Map();
-        const indexByNat = new Map();
-        const natKey = (date, start) => date + '|' + (start||'');
-        state.entries.forEach((e,i)=>{
-          indexById.set(String(e.id), i);
-          indexByNat.set(natKey(e.date, e.start), i);
+    // cost line (chart 0 only)
+    if(costs){
+      const maxCost=Math.max(1,...costs);
+      let pts=[];
+      costs.forEach((c,i)=>{ if(c>0){ const x=padL+gap*i+gap/2; const y=padT+plotH-(c/maxCost)*plotH; pts.push([x,y,c]); }});
+      if(pts.length){
+        svg+=`<polyline points="${pts.map(p=>p[0]+','+p[1]).join(' ')}" fill="none" stroke="var(--line-cost)" stroke-width="2"/>`;
+        pts.forEach(p=>{
+          svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--line-cost)"/>`;
+          svg+=`<text x="${p[0]}" y="${p[1]-7}" font-size="8.5" fill="var(--line-cost)" text-anchor="middle" font-weight="600">${p[2]}</text>`;
         });
-        let added = 0, updated = 0;
-        for(let i=1;i<lines.length;i++){
-          const cols = parseCsvLine(lines[i], delim);
-          const rawId = iId>-1 ? String(cols[iId]||'').trim() : '';
-          const date = toISODate(iDate>-1 ? cols[iDate] : cols[0]);
-          const kwh = parseFloat(iKwh>-1 ? cols[iKwh] : cols[1]);
-          const price = parseFloat(iPrice>-1 ? cols[iPrice] : cols[2]);
-          const start = iStart>-1 ? (cols[iStart]||null) : null;
-          const end = iEnd>-1 ? (cols[iEnd]||null) : null;
-          let minutes = (iMinutes>-1 && cols[iMinutes]) ? parseInt(cols[iMinutes],10) : computeMinutes(start,end);
-          const odo = (iOdo>-1 && cols[iOdo] && !isNaN(parseInt(cols[iOdo],10))) ? parseInt(cols[iOdo],10) : null;
-          const note = iNote>-1 ? (cols[iNote]||'') : '';
-          if(!date || isNaN(kwh) || isNaN(price)) continue;
-
-          // decide which existing entry (if any) this row refers to
-          let j = -1;
-          if(rawId && indexById.has(rawId)) j = indexById.get(rawId);
-          else if(indexByNat.has(natKey(date, start))) j = indexByNat.get(natKey(date, start));
-
-          if(j !== -1){
-            const prev = state.entries[j];
-            const merged = { ...prev, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
-            if(JSON.stringify(merged) !== JSON.stringify(prev)){
-              state.entries[j] = merged;
-              updated++;
-            }
-          } else {
-            // keep the CSV's ID if it's a valid number and not already taken, else mint a fresh one
-            let newId = (rawId && /^\d+$/.test(rawId) && !indexById.has(rawId))
-              ? parseInt(rawId,10)
-              : Date.now()+i+Math.floor(Math.random()*1000);
-            const entry = { id: newId, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
-            state.entries.push(entry);
-            const at = state.entries.length-1;
-            indexById.set(String(newId), at);
-            indexByNat.set(natKey(date, start), at);
-            added++;
-          }
-        }
-        cloudSave();
-        render();
-        msg.style.color = 'var(--led)';
-        const parts = [];
-        if(added) parts.push('добавлено: '+added);
-        if(updated) parts.push('обновлено: '+updated);
-        msg.textContent = parts.length ? ('Импорт — '+parts.join(', ')) : 'Изменений нет';
-      }catch(e){
-        msg.style.color = 'var(--red)';
-        msg.textContent = 'Не удалось прочитать этот CSV';
       }
-    };
-    reader.readAsText(file, 'utf-8');
-  }
-
-  // ---- setup banner wiring ----
-  function refreshSetupUI(){
-    $('clog-setup').style.display = haveCloud() ? 'none' : 'block';
-    $('clog-refresh-btn').style.display = haveCloud() ? 'inline-block' : 'none';
-    if(!haveCloud()) setSync('local','локально (нет ключа)');
-  }
-  async function connectCloud(){
-    const key = $('clog-setup-key').value.trim();
-    const smsg = $('clog-setup-msg');
-    smsg.style.color = 'var(--red)';
-    if(!key){ smsg.textContent = 'Вставь Master Key'; return; }
-    cfg.binId = BUILT_IN_BIN_ID; cfg.key = key;
-    smsg.style.color = 'var(--muted)';
-    smsg.textContent = 'Проверяю подключение…';
-    const ok = await cloudLoad();
-    if(ok){
-      saveCfg();
-      refreshSetupUI();
-      render();
-      smsg.textContent = '';
-    }else{
-      // connection failed — keep the field, let them retry
-      cfg.key = '';
-      smsg.style.color = 'var(--red)';
-      smsg.textContent = 'Не удалось подключиться. Проверь Master Key.';
-      setSync('err','ошибка ключа');
     }
+    svg+=`</svg>`;
+    $('mchart').innerHTML=svg;
+
+    // year summary line
+    const totKwh=d.kwh.reduce((s,v)=>s+v,0);
+    const totCost=d.cost.reduce((s,v)=>s+ceil(v),0);
+    $('myearsum').innerHTML=`${year} · <span class="m-mono">${totKwh} кВтч</span> · <span class="m-mono">${totCost} ₪</span>`;
+    $('mtitle').textContent=TITLES[chartIdx];
+    $('mlegend').innerHTML=LEGENDS[chartIdx];
+    // tabs + dots
+    document.querySelectorAll('.m-tab').forEach(t=> t.classList.toggle('active', +t.dataset.i===chartIdx));
+    document.querySelectorAll('.m-dot').forEach((dt,i)=> dt.classList.toggle('on', i===chartIdx));
   }
 
-  // ---- boot ----
-  async function boot(){
-    $('clog-version').textContent = APP_VERSION;
-    $('clog-today').textContent = new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
-    loadCfg();
-    loadCache();          // show cached data immediately
-    resetForm();
-    render(true);
-    refreshSetupUI();
-    if(haveCloud()){
-      await cloudLoad();  // then refresh from cloud
-      resetForm();
-      render();
+  // tabs
+  document.querySelectorAll('.m-tab').forEach(t=>{
+    t.addEventListener('click', ()=>{ chartIdx=+t.dataset.i; renderChart(); });
+  });
+  // year arrows
+  $('mprev').addEventListener('click', ()=>{ if(yearIdx>0){yearIdx--;renderChart();} });
+  $('mnext').addEventListener('click', ()=>{ if(yearIdx<YEARS.length-1){yearIdx++;renderChart();} });
+  $('mtoday').addEventListener('click', ()=>{ yearIdx=YEARS.indexOf(CUR_YEAR); renderChart(); });
+
+  // swipe on chart -> change chart type
+  const sw=$('mswipe'); let x0=null;
+  sw.addEventListener('touchstart', e=>{ x0=e.touches[0].clientX; }, {passive:true});
+  sw.addEventListener('touchend', e=>{
+    if(x0===null) return;
+    const dx=e.changedTouches[0].clientX-x0;
+    if(Math.abs(dx)>40){
+      if(dx<0 && chartIdx<TITLES.length-1) chartIdx++;
+      else if(dx>0 && chartIdx>0) chartIdx--;
+      renderChart();
     }
-  }
-
-  $('clog-add-btn').addEventListener('click', saveEntry);
-  $('clog-cancel-btn').addEventListener('click', cancelEdit);
-  $('clog-export-btn').addEventListener('click', exportCsv);
-  $('clog-import-btn').addEventListener('click', ()=> $('clog-import-file').click());
-  $('clog-import-file').addEventListener('change', (e)=>{
-    if(e.target.files && e.target.files[0]) importCsv(e.target.files[0]);
-    e.target.value = '';
+    x0=null;
+  }, {passive:true});
+  // mouse drag fallback for desktop preview
+  let mx0=null;
+  sw.addEventListener('mousedown', e=>{ mx0=e.clientX; });
+  window.addEventListener('mouseup', e=>{
+    if(mx0===null) return;
+    const dx=e.clientX-mx0;
+    if(Math.abs(dx)>40){
+      if(dx<0 && chartIdx<TITLES.length-1) chartIdx++;
+      else if(dx>0 && chartIdx>0) chartIdx--;
+      renderChart();
+    }
+    mx0=null;
   });
-  $('clog-refresh-btn').addEventListener('click', async ()=>{
-    await cloudLoad();
-    if(editingId===null) resetForm();
-    render();
-  });
-  $('clog-setup-save').addEventListener('click', connectCloud);
 
-  boot();
+  renderChart();
 })();
 </script>
 </body>
