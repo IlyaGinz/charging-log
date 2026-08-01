@@ -353,6 +353,10 @@
           <div class="clog-stat-label">Средняя, кВтч</div>
           <div class="clog-stat-value clog-mono" id="clog-stat-avgkwh">–</div>
         </div>
+        <div>
+          <div class="clog-stat-label">Пробег, км</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-dist">–</div>
+        </div>
       </div>
     </div>
 
@@ -460,7 +464,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v1.9';
+  const APP_VERSION = 'v2.0';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -784,7 +788,9 @@
     // year summary (for selected year) — energy + cost, ₪ округл. вверх
     const totKwh = d.kwh.reduce((s,v)=>s+v,0);
     const totCost = d.cost.reduce((s,v)=>s+Math.ceil(v>0?v:0),0);
-    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} кВтч</span> · <span class="clog-mono">${totCost} ₪</span>`;
+    const totDist = d.dist.reduce((s,v)=>s+v,0); // проеханные км за год (сумма интервалов)
+    const distPart = totDist>0 ? ` · <span class="clog-mono">${fmt(totDist,0)} км</span>` : '';
+    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} кВтч</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}`;
 
     // title + legend + tabs/dots
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
@@ -828,7 +834,12 @@
     const count = entries.length;
     const totalKwh = entries.reduce((s,e)=>s+e.kwh,0);
     const totalCost = entries.reduce((s,e)=>s+e.cost,0);
-    return { count, totalKwh, totalCost, avgKwh: count ? totalKwh/count : null };
+    // общий пробег «с начала истории» = сумма всех проеханных км (интервалов
+    // между зарядками) по всем годам — совпадает с суммой годовых пробегов.
+    const by = chartAgg();
+    let totalDist = 0;
+    Object.keys(by).forEach(y=>{ totalDist += by[y].dist.reduce((s,v)=>s+v,0); });
+    return { count, totalKwh, totalCost, avgKwh: count ? totalKwh/count : null, totalDist };
   }
 
   function render(skipAnim){
@@ -841,6 +852,7 @@
     $('clog-stat-count').textContent = s.count;
     $('clog-stat-cost').textContent = fmt(s.totalCost,2);
     $('clog-stat-avgkwh').textContent = s.avgKwh===null ? '–' : fmt(s.avgKwh,1);
+    $('clog-stat-dist').textContent = s.totalDist>0 ? fmt(s.totalDist,0) : '–';
 
     const list = $('clog-list');
     list.innerHTML = '';
