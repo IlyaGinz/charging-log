@@ -402,8 +402,12 @@
           </div>
         </div>
         <div class="clog-field">
-          <label>Пробег, км (одометр)</label>
-          <input type="number" inputmode="numeric" step="1" min="0" placeholder="напр. 12480" id="clog-in-odo">
+          <label>Пробег, км · % before / after</label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <input type="number" inputmode="numeric" step="1" min="0" placeholder="одометр" id="clog-in-odo" style="flex:1 1 100%;min-width:0;">
+            <input type="number" inputmode="numeric" min="0" max="100" placeholder="% before" id="clog-in-soc-bfr" style="flex:1 1 0;min-width:0;">
+            <input type="number" inputmode="numeric" min="0" max="100" placeholder="% after" id="clog-in-soc-aft" style="flex:1 1 0;min-width:0;">
+          </div>
         </div>
         <div class="clog-field">
           <label>Время окончания <span style="color:var(--muted-2);font-size:9px;">(только для лога)</span></label>
@@ -464,7 +468,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v2.0';
+  const APP_VERSION = 'v2.2';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -475,7 +479,7 @@
   const BUILT_IN_BIN_ID = '6a65b772da38895dfe90dc1b';
 
   let cfg = { binId: BUILT_IN_BIN_ID, key: '' };
-  let state = { defaultPrice: 0.65, entries: [] };
+  let state = { defaultPrice: 0.65, defaultSocAft: 80, entries: [] };
   let pendingDeleteId = null;
   let editingId = null;
   let saving = false;
@@ -566,6 +570,7 @@
       const raw = localStorage.getItem(CACHE_KEY);
       if(raw){ const p = JSON.parse(raw);
         state.defaultPrice = p.defaultPrice ?? 0.65;
+        state.defaultSocAft = p.defaultSocAft ?? 80;
         state.entries = Array.isArray(p.entries) ? p.entries : [];
       }
     }catch(e){}
@@ -593,6 +598,7 @@
       // JSONBin wraps the stored value; with X-Bin-Meta:false it returns the raw record
       const rec = (data && data.record !== undefined) ? data.record : data;
       state.defaultPrice = (rec && rec.defaultPrice) ? rec.defaultPrice : 0.65;
+      state.defaultSocAft = (rec && rec.defaultSocAft!==undefined && rec.defaultSocAft!==null) ? rec.defaultSocAft : 80;
       state.entries = (rec && Array.isArray(rec.entries)) ? rec.entries : [];
       if(migrateDates()) await cloudSave(true);
       saveCache();
@@ -615,7 +621,7 @@
       const res = await fetch(JSONBIN_BASE+'/'+cfg.binId, {
         method:'PUT',
         headers:{ 'Content-Type':'application/json', 'X-Master-Key': cfg.key },
-        body: JSON.stringify({ defaultPrice: state.defaultPrice, entries: state.entries })
+        body: JSON.stringify({ defaultPrice: state.defaultPrice, defaultSocAft: state.defaultSocAft, entries: state.entries })
       });
       if(!res.ok) throw new Error('HTTP '+res.status);
       setSync('ok','синхронизировано');
@@ -872,6 +878,11 @@
       if(durText) metaParts.push(durText);
       if(powerText) metaParts.push('≈'+powerText);
       if(e.odo!==null && e.odo!==undefined && e.odo!=='') metaParts.push(Number(e.odo).toLocaleString('ru-RU')+' км');
+      if((e.socBfr!==null && e.socBfr!==undefined) || (e.socAft!==null && e.socAft!==undefined)){
+        const b = (e.socBfr!==null && e.socBfr!==undefined) ? e.socBfr : '?';
+        const a = (e.socAft!==null && e.socAft!==undefined) ? e.socAft : '?';
+        metaParts.push('SoC '+b+'→'+a+'%');
+      }
       const isPending = pendingDeleteId === e.id;
       row.innerHTML = `
         <div class="clog-slot">${sorted.length-idx}</div>
@@ -934,6 +945,8 @@
     strToHM(e.start, $('clog-in-start-h'), $('clog-in-start-m'));
     strToHM(e.end, $('clog-in-end-h'), $('clog-in-end-m'));
     $('clog-in-odo').value = (e.odo!==null && e.odo!==undefined) ? e.odo : '';
+    $('clog-in-soc-bfr').value = (e.socBfr!==null && e.socBfr!==undefined) ? e.socBfr : '';
+    $('clog-in-soc-aft').value = (e.socAft!==null && e.socAft!==undefined) ? e.socAft : '';
     $('clog-in-note').value = e.note || '';
     $('clog-form-title').textContent = 'Редактирование записи';
     $('clog-add-btn').textContent = 'Сохранить изменения';
@@ -953,6 +966,8 @@
     $('clog-in-end-h').value = '';
     $('clog-in-end-m').value = '';
     $('clog-in-odo').value = '';
+    $('clog-in-soc-bfr').value = '';
+    $('clog-in-soc-aft').value = state.defaultSocAft;
     $('clog-in-note').value = '';
     $('clog-form-title').textContent = 'Новая запись';
     $('clog-add-btn').textContent = 'Добавить запись';
@@ -971,23 +986,30 @@
     const end = hmToStr($('clog-in-end-h').value, $('clog-in-end-m').value) || null;
     const odoRaw = $('clog-in-odo').value;
     const odo = (odoRaw==='' || isNaN(parseInt(odoRaw,10))) ? null : parseInt(odoRaw,10);
+    const socBfrRaw = $('clog-in-soc-bfr').value;
+    const socBfr = (socBfrRaw==='' || isNaN(parseInt(socBfrRaw,10))) ? null : parseInt(socBfrRaw,10);
+    const socAftRaw = $('clog-in-soc-aft').value;
+    const socAft = (socAftRaw==='' || isNaN(parseInt(socAftRaw,10))) ? null : parseInt(socAftRaw,10);
     const note = $('clog-in-note').value.trim();
     if(kwh < 0){ msg.textContent = 'Энергия не может быть отрицательной'; return; }
     if(!price || price<=0){ msg.textContent = 'Укажи цену за кВтч'; return; }
+    if(socBfr!==null && (socBfr<0 || socBfr>100)){ msg.textContent = '% before — от 0 до 100'; return; }
+    if(socAft!==null && (socAft<0 || socAft>100)){ msg.textContent = '% after — от 0 до 100'; return; }
     const minutes = computeMinutes(start, end);
     const cost = kwh*price;
     let doneMsg = 'Записано';
     if(editingId !== null){
       const idx = state.entries.findIndex(e=>e.id===editingId);
       if(idx !== -1){
-        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, odo, note };
+        state.entries[idx] = { ...state.entries[idx], date, kwh, price, cost, minutes, start, end, odo, socBfr, socAft, note };
       }
       editingId = null;
       doneMsg = 'Изменения сохранены';
     } else {
-      state.entries.push({ id: Date.now(), date, kwh, price, cost, minutes, start, end, odo, note });
+      state.entries.push({ id: Date.now(), date, kwh, price, cost, minutes, start, end, odo, socBfr, socAft, note });
     }
     state.defaultPrice = price;
+    if(socAft!==null) state.defaultSocAft = socAft; // запоминаем последний конечный SoC для автоподстановки
     cloudSave();
     resetForm();
     msg.style.color = 'var(--led)';
@@ -999,12 +1021,14 @@
 
   // ---- CSV ----
   function exportCsv(){
-    const rows = [['ID','Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','Заметка']];
+    const rows = [['ID','Дата','Начало','Окончание','кВтч','Цена за кВтч','Стоимость','Минуты','Ср. мощность кВт','Пробег км','SoC bfr','SoC aft','Заметка']];
     [...state.entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
       rows.push([
         e.id, e.date, e.start||'', e.end||'', e.kwh, e.price, Number(e.cost).toFixed(2),
         e.minutes||'', e.minutes ? (e.kwh/(e.minutes/60)).toFixed(2) : '',
         (e.odo!==null && e.odo!==undefined) ? e.odo : '',
+        (e.socBfr!==null && e.socBfr!==undefined) ? e.socBfr : '',
+        (e.socAft!==null && e.socAft!==undefined) ? e.socAft : '',
         e.note||''
       ]);
     });
@@ -1065,7 +1089,8 @@
         const idx = (name) => header.indexOf(name);
         const iId = idx('ID'), iDate = idx('Дата'), iStart = idx('Начало'), iEnd = idx('Окончание'),
               iKwh = idx('кВтч'), iPrice = idx('Цена за кВтч'),
-              iMinutes = idx('Минуты'), iOdo = idx('Пробег км'), iNote = idx('Заметка');
+              iMinutes = idx('Минуты'), iOdo = idx('Пробег км'),
+              iSocBfr = idx('SoC bfr'), iSocAft = idx('SoC aft'), iNote = idx('Заметка');
         // Matching is HYBRID:
         //   1. If the row has an ID and it matches an existing entry → update that
         //      entry in place (bullet-proof: works even if you changed date/kWh/etc).
@@ -1092,6 +1117,8 @@
           const end = iEnd>-1 ? (cols[iEnd]||null) : null;
           let minutes = (iMinutes>-1 && cols[iMinutes]) ? parseInt(cols[iMinutes],10) : computeMinutes(start,end);
           const odo = (iOdo>-1 && cols[iOdo] && !isNaN(parseInt(cols[iOdo],10))) ? parseInt(cols[iOdo],10) : null;
+          const socBfr = (iSocBfr>-1 && cols[iSocBfr] && !isNaN(parseInt(cols[iSocBfr],10))) ? parseInt(cols[iSocBfr],10) : null;
+          const socAft = (iSocAft>-1 && cols[iSocAft] && !isNaN(parseInt(cols[iSocAft],10))) ? parseInt(cols[iSocAft],10) : null;
           const note = iNote>-1 ? (cols[iNote]||'') : '';
           if(!date || isNaN(kwh) || isNaN(price)) continue;
 
@@ -1102,7 +1129,7 @@
 
           if(j !== -1){
             const prev = state.entries[j];
-            const merged = { ...prev, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
+            const merged = { ...prev, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, socBfr, socAft, note };
             if(JSON.stringify(merged) !== JSON.stringify(prev)){
               state.entries[j] = merged;
               updated++;
@@ -1112,7 +1139,7 @@
             let newId = (rawId && /^\d+$/.test(rawId) && !indexById.has(rawId))
               ? parseInt(rawId,10)
               : Date.now()+i+Math.floor(Math.random()*1000);
-            const entry = { id: newId, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, note };
+            const entry = { id: newId, date, kwh, price, cost: kwh*price, minutes: minutes||null, start, end, odo, socBfr, socAft, note };
             state.entries.push(entry);
             const at = state.entries.length-1;
             indexById.set(String(newId), at);
