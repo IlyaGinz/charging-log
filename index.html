@@ -226,10 +226,10 @@
     font-size:11.5px;color:var(--muted-2);margin-top:10px;line-height:1.5;
   }
   /* ---- chart carousel ---- */
-  .clog-chart-tabs{ display:flex;gap:5px;margin-bottom:6px; }
+  .clog-chart-tabs{ display:flex;gap:4px;margin-bottom:6px; }
   .clog-chart-tab{
-    flex:1;text-align:center;font-size:12px;font-weight:600;
-    padding:11px 2px;border-radius:8px;
+    flex:1;text-align:center;font-size:10.5px;font-weight:600;
+    padding:10px 1px;border-radius:7px;
     background:var(--panel-2);color:var(--muted);
     border:1px solid transparent;cursor:pointer;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;
@@ -338,7 +338,7 @@
       <div class="clog-meter-main">
         <span class="clog-led" id="clog-led"></span>
         <span class="clog-meter-digits clog-mono" id="clog-total-kwh">0.00</span>
-        <span class="clog-meter-unit">кВтч всего</span>
+        <span class="clog-meter-unit">kWh всего</span>
       </div>
       <div class="clog-meter-sub">
         <div>
@@ -346,7 +346,7 @@
           <div class="clog-stat-value clog-mono" id="clog-stat-count">0</div>
         </div>
         <div>
-          <div class="clog-stat-label">Средняя, кВтч</div>
+          <div class="clog-stat-label">Средняя, kWh</div>
           <div class="clog-stat-value clog-mono" id="clog-stat-avgkwh">–</div>
         </div>
         <div>
@@ -363,12 +363,13 @@
     <div class="clog-panel">
       <div class="clog-chart-tabs" id="clog-chart-tabs">
         <div class="clog-chart-tab active" data-i="0">Расход</div>
-        <div class="clog-chart-tab" data-i="1">кВтч/100</div>
-        <div class="clog-chart-tab" data-i="2">₪/100</div>
-        <div class="clog-chart-tab" data-i="3">Пробег</div>
+        <div class="clog-chart-tab" data-i="1">kWh/100⚡</div>
+        <div class="clog-chart-tab" data-i="2">kWh/100🔋</div>
+        <div class="clog-chart-tab" data-i="3">₪/100</div>
+        <div class="clog-chart-tab" data-i="4">Пробег</div>
       </div>
       <div class="clog-chart-dots" id="clog-chart-dots">
-        <div class="clog-chart-dot on"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div>
+        <div class="clog-chart-dot on"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div>
       </div>
       <div class="clog-chart-yearline">
         <div class="clog-chart-yearsum" id="clog-chart-yearsum">–</div>
@@ -418,11 +419,11 @@
           </div>
         </div>
         <div class="clog-field">
-          <label>Энергия, кВтч</label>
+          <label>Энергия, kWh</label>
           <input type="number" inputmode="decimal" step="0.01" min="0" id="clog-in-kwh">
         </div>
         <div class="clog-field">
-          <label>Цена, ₪/кВтч</label>
+          <label>Цена, ₪/kWh</label>
           <input type="number" inputmode="decimal" step="0.01" min="0" id="clog-in-price">
         </div>
         <div class="clog-field" style="grid-column:1 / -1;">
@@ -468,7 +469,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.0';
+  const APP_VERSION = 'v3.1';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -477,6 +478,12 @@
   // Bin ID baked into the file — same shared bin for every device.
   // Only the Master Key needs to be entered per device.
   const BUILT_IN_BIN_ID = '6a65b772da38895dfe90dc1b';
+
+  // Полезная (usable) ёмкость батареи, кВтч. Hyundai IONIQ 5 84 kWh AWD:
+  // валовая 84.0, usable 80.0 (EV-Database). Используется для расчёта расхода
+  // «из батареи» (ΔSoC × ёмкость). ОТЛОЖЕННАЯ ВИЛКА: позже — авто-оценка по истории
+  // (см. функцию-диагност). Пока константа; при деградации меняется здесь вручную.
+  const USABLE_KWH = 80.0;
 
   let cfg = { binId: BUILT_IN_BIN_ID, key: '' };
   let state = { defaultPrice: 0.65, defaultSocAft: 80, entries: [] };
@@ -635,15 +642,16 @@
   const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   // chart carousel state
-  let chartType = 0;   // 0 расход+₪, 1 кВтч/100км, 2 ₪/100км, 3 пробег между зарядками
+  let chartType = 0;   // 0 расход+₪, 1 kWh/100 из зарядки, 2 kWh/100 из батареи, 3 ₪/100, 4 пробег
   let chartYear = null; // selected year (number); null until first render picks one
   const CHART_TITLES = [
-    'Расход энергии и стоимость · по месяцам',
-    'Расход на 100 км · по месяцам',
+    'Отдано зарядкой и стоимость · по месяцам',
+    'Расход из зарядки на 100 км · по месяцам',
+    'Расход из батареи на 100 км · по месяцам',
     'Стоимость на 100 км · по месяцам',
     'Пробег между зарядками · по месяцам'
   ];
-  const CHART_COUNT = 4;
+  const CHART_COUNT = 5;
 
   // aggregate entries into { year: { months:[12], ... } }
   function chartAgg(){
@@ -654,8 +662,10 @@
         cost:new Array(12).fill(0),     // суммарная стоимость по месяцу (для Расход)
         count:new Array(12).fill(0),
         dist:new Array(12).fill(0),     // км, проеханные между зарядками (пробег)
-        distKwh:new Array(12).fill(0),  // энергия, привязанная к тем же интервалам
-        distCost:new Array(12).fill(0)  // стоимость тех же интервалов
+        distKwh:new Array(12).fill(0),  // энергия ЗАРЯДКИ, привязанная к тем же интервалам
+        distCost:new Array(12).fill(0), // стоимость тех же интервалов
+        distBattKwh:new Array(12).fill(0), // энергия ИЗ БАТАРЕИ по просадке SoC (реальный расход)
+        distBattKm:new Array(12).fill(0)   // км тех интервалов, где просадка SoC известна
       };
       return byYear[y];
     }
@@ -689,6 +699,17 @@
       yy.dist[mi]     += dist;
       yy.distKwh[mi]  += Number(cur.kwh)||0;   // энергия закрывающей зарядки = потрачено на этот отрезок
       yy.distCost[mi] += Number(cur.cost)||0;
+      // расход «из батареи»: просадка SoC за поездку = сколько заряда в конце прошлой
+      // зарядки (socAft prev) минус сколько осталось к началу этой (socBfr cur).
+      // Переводим проценты в кВтч через usable-ёмкость. Нужны обе величины.
+      if(prev.socAft!==null && prev.socAft!==undefined &&
+         cur.socBfr!==null && cur.socBfr!==undefined){
+        const dropPct = Number(prev.socAft) - Number(cur.socBfr);
+        if(dropPct>0){
+          yy.distBattKwh[mi] += (dropPct/100) * USABLE_KWH;
+          yy.distBattKm[mi]  += dist;
+        }
+      }
     }
     return byYear;
   }
@@ -728,10 +749,14 @@
       costs = d.cost.map(c=> c>0 ? Math.ceil(c) : 0); // ₪ округление ВВЕРХ
       barDecimals = 0;
     } else if(chartType===1){
-      // расход кВтч/100км = энергия интервалов / расстояние * 100 (по месяцам)
+      // расход ИЗ ЗАРЯДКИ kWh/100км = энергия зарядки интервалов / расстояние * 100
       bars = d.dist.map((km,i)=> km>0 ? +( (d.distKwh[i]/km)*100 ).toFixed(1) : 0);
       barDecimals = 1;
     } else if(chartType===2){
+      // расход ИЗ БАТАРЕИ kWh/100км = (ΔSoC×ёмкость) / расстояние * 100 — как на приборке
+      bars = d.distBattKm.map((km,i)=> km>0 ? +( (d.distBattKwh[i]/km)*100 ).toFixed(1) : 0);
+      barDecimals = 1;
+    } else if(chartType===3){
       // стоимость ₪/100км = стоимость интервалов / расстояние * 100, с десятыми
       bars = d.dist.map((km,i)=> km>0 ? +( (d.distCost[i]/km)*100 ).toFixed(1) : 0);
       barDecimals = 1;
@@ -786,7 +811,9 @@
     if(!hasData){
       wrap.innerHTML = (chartType===0)
         ? '<div class="clog-empty">Пока недостаточно данных для графика.</div>'
-        : '<div class="clog-empty">Недостаточно данных о пробеге. Заполни одометр хотя бы у двух зарядок подряд.</div>';
+        : (chartType===2)
+          ? '<div class="clog-empty">Недостаточно данных. Нужны пробег и SoC (% before/after) у зарядок подряд.</div>'
+          : '<div class="clog-empty">Недостаточно данных о пробеге. Заполни одометр хотя бы у двух зарядок подряд.</div>';
     } else {
       wrap.innerHTML = svg;
     }
@@ -796,15 +823,16 @@
     const totCost = d.cost.reduce((s,v)=>s+Math.ceil(v>0?v:0),0);
     const totDist = d.dist.reduce((s,v)=>s+v,0); // проеханные км за год (сумма интервалов)
     const distPart = totDist>0 ? ` · <span class="clog-mono">${fmt(totDist,0)} км</span>` : '';
-    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} кВтч</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}`;
+    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}`;
 
     // title + legend + tabs/dots
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
     const LEG = {
-      0: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>кВтч</span><span><span class="clog-chart-swatch" style="background:var(--cost);border-radius:50%;"></span>₪ (округл. вверх)</span>',
-      1: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>кВтч / 100 км</span>',
-      2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
-      3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
+      0: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh</span><span><span class="clog-chart-swatch" style="background:var(--cost);border-radius:50%;"></span>₪ (округл. вверх)</span>',
+      1: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh / 100 км (из зарядки)</span>',
+      2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh / 100 км (из батареи)</span>',
+      3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
+      4: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
     };
     $('clog-chart-legend').innerHTML = LEG[chartType] || '';
     syncTabsDots();
@@ -871,12 +899,10 @@
       const row = document.createElement('div');
       row.className = 'clog-row' + (String(e.id)===String(editingId) ? ' clog-row-editing' : '');
       const durText = e.minutes ? Math.floor(e.minutes/60)+'ч '+(e.minutes%60)+'м' : null;
-      const powerText = e.minutes ? fmt(e.kwh/(e.minutes/60),1)+' кВт' : null;
       const rangeText = (e.start && e.end) ? (e.start+'–'+e.end) : null;
-      const metaParts = [Number(e.price).toFixed(2)+' ₪/кВтч'];
+      const metaParts = [Number(e.price).toFixed(2)+' ₪/kWh'];
       if(rangeText) metaParts.push(rangeText);
       if(durText) metaParts.push(durText);
-      if(powerText) metaParts.push('≈'+powerText);
       if(e.odo!==null && e.odo!==undefined && e.odo!=='') metaParts.push(Number(e.odo).toLocaleString('ru-RU')+' км');
       if((e.socBfr!==null && e.socBfr!==undefined) || (e.socAft!==null && e.socAft!==undefined)){
         const b = (e.socBfr!==null && e.socBfr!==undefined) ? e.socBfr : '?';
@@ -992,7 +1018,7 @@
     const socAft = (socAftRaw==='' || isNaN(parseInt(socAftRaw,10))) ? null : parseInt(socAftRaw,10);
     const note = $('clog-in-note').value.trim();
     if(kwh < 0){ msg.textContent = 'Энергия не может быть отрицательной'; return; }
-    if(!price || price<=0){ msg.textContent = 'Укажи цену за кВтч'; return; }
+    if(!price || price<=0){ msg.textContent = 'Укажи цену за kWh'; return; }
     if(socBfr!==null && (socBfr<0 || socBfr>100)){ msg.textContent = '% before — от 0 до 100'; return; }
     if(socAft!==null && (socAft<0 || socAft>100)){ msg.textContent = '% after — от 0 до 100'; return; }
     const minutes = computeMinutes(start, end);
