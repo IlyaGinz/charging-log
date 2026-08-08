@@ -346,12 +346,12 @@
           <div class="clog-stat-value clog-mono" id="clog-stat-count">0</div>
         </div>
         <div>
-          <div class="clog-stat-label">Итого, ₪</div>
-          <div class="clog-stat-value clog-mono" id="clog-stat-cost">0.00</div>
-        </div>
-        <div>
           <div class="clog-stat-label">Средняя, кВтч</div>
           <div class="clog-stat-value clog-mono" id="clog-stat-avgkwh">–</div>
+        </div>
+        <div>
+          <div class="clog-stat-label">Итого, ₪</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-cost">0.00</div>
         </div>
         <div>
           <div class="clog-stat-label">Пробег, км</div>
@@ -363,8 +363,8 @@
     <div class="clog-panel">
       <div class="clog-chart-tabs" id="clog-chart-tabs">
         <div class="clog-chart-tab active" data-i="0">Расход</div>
-        <div class="clog-chart-tab" data-i="1">100 км</div>
-        <div class="clog-chart-tab" data-i="2">₪/100км</div>
+        <div class="clog-chart-tab" data-i="1">кВтч/100</div>
+        <div class="clog-chart-tab" data-i="2">₪/100</div>
         <div class="clog-chart-tab" data-i="3">Пробег</div>
       </div>
       <div class="clog-chart-dots" id="clog-chart-dots">
@@ -468,7 +468,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v2.2';
+  const APP_VERSION = 'v3.0';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
