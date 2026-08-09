@@ -469,7 +469,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.1';
+  const APP_VERSION = 'v3.2';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -899,7 +899,8 @@
       const row = document.createElement('div');
       row.className = 'clog-row' + (String(e.id)===String(editingId) ? ' clog-row-editing' : '');
       const durText = e.minutes ? Math.floor(e.minutes/60)+'ч '+(e.minutes%60)+'м' : null;
-      const rangeText = (e.start && e.end) ? (e.start+'–'+e.end) : null;
+      const rangeText = (e.start && e.end) ? (e.start+'–'+e.end)
+                       : (e.start ? (e.start+'–') : null); // только начало → "19:18–"
       const metaParts = [Number(e.price).toFixed(2)+' ₪/kWh'];
       if(rangeText) metaParts.push(rangeText);
       if(durText) metaParts.push(durText);
