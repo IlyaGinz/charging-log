@@ -462,7 +462,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.3';
+  const APP_VERSION = 'v3.4';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -477,6 +477,36 @@
   // «из батареи» (ΔSoC × ёмкость). ОТЛОЖЕННАЯ ВИЛКА: позже — авто-оценка по истории
   // (см. функцию-диагност). Пока константа; при деградации меняется здесь вручную.
   const USABLE_KWH = 80.0;
+
+  // --- Параметры прогноза времени окончания зарядки ---
+  // Реальный конец = когда набралась целевая ёмкость (переход в SuspendedEV),
+  // а НЕ извлечение пистолета. Считаем из тока, напряжения, фаз, КПД.
+  const CHG_VOLTAGE = 229;   // типовое напряжение фазы, В (стабильно ~226–232)
+  const CHG_PHASES  = 3;     // трёхфазная «вторая поилка»
+  const CHG_EFF     = 0.87;  // КПД зарядки (потери ~13%)
+  const CHG_I_FACTOR= 0.97;  // фактический ток ≈ 0.97 × номинал (ставишь 10 → течёт ~9.7)
+
+  // Прогноз времени окончания по записи. Нужны: start, socBfr, socAft(цель), current.
+  // Возвращает 'ЧЧ:ММ' или null, если данных не хватает.
+  function predictEnd(e){
+    if(!e || !e.start) return null;
+    if(e.socBfr===null || e.socBfr===undefined) return null;
+    if(e.socAft===null || e.socAft===undefined) return null;
+    if(e.current===null || e.current===undefined || e.current<=0) return null;
+    const dSoc = Number(e.socAft) - Number(e.socBfr);
+    if(!(dSoc>0)) return null;
+    const needKwh = (dSoc/100) * USABLE_KWH;               // сколько влить в батарею
+    const powerW = Number(e.current)*CHG_I_FACTOR*CHG_VOLTAGE*CHG_PHASES; // Вт, отдаёт зарядка
+    const powerKwhToBatt = (powerW/1000) * CHG_EFF;        // кВт, доходит до батареи
+    if(!(powerKwhToBatt>0)) return null;
+    const hours = needKwh / powerKwhToBatt;                // часы зарядки
+    const [sh,sm] = String(e.start).split(':').map(Number);
+    if(isNaN(sh)||isNaN(sm)) return null;
+    let total = sh*60 + sm + Math.round(hours*60);
+    total = ((total % 1440) + 1440) % 1440;                // перенос через полночь
+    const eh = Math.floor(total/60), em = total%60;
+    return String(eh).padStart(2,'0')+':'+String(em).padStart(2,'0');
+  }
 
   let cfg = { binId: BUILT_IN_BIN_ID, key: '' };
   let state = { defaultPrice: 0.65, defaultSocAft: 80, defaultCurrent: 10, entries: [] };
@@ -894,8 +924,15 @@
       const row = document.createElement('div');
       row.className = 'clog-row' + (String(e.id)===String(editingId) ? ' clog-row-editing' : '');
       const durText = e.minutes ? Math.floor(e.minutes/60)+'ч '+(e.minutes%60)+'м' : null;
-      const rangeText = (e.start && e.end) ? (e.start+'–'+e.end)
-                       : (e.start ? (e.start+'–') : null); // только начало → "19:18–"
+      let rangeText;
+      if(e.start && e.end){
+        rangeText = e.start+'–'+e.end;                      // факт: начало и конец
+      } else if(e.start){
+        const pred = predictEnd(e);                          // прогноз конца зарядки
+        rangeText = pred ? (e.start+'–<i>≈'+pred+'</i>') : (e.start+'–');
+      } else {
+        rangeText = null;
+      }
       const metaParts = [Number(e.price).toFixed(2)+' ₪/kWh'];
       if(rangeText) metaParts.push(rangeText);
       if(durText) metaParts.push(durText);
