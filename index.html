@@ -462,7 +462,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.4';
+  const APP_VERSION = 'v3.5';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -933,9 +933,8 @@
       } else {
         rangeText = null;
       }
-      const metaParts = [Number(e.price).toFixed(2)+' ₪/kWh'];
-      if(rangeText) metaParts.push(rangeText);
-      if(durText) metaParts.push(durText);
+      const metaParts = [];
+      // порядок: пробег → SoC → ток → время(+длительность) → цена
       if(e.odo!==null && e.odo!==undefined && e.odo!=='') metaParts.push(Number(e.odo).toLocaleString('ru-RU')+' км');
       if((e.socBfr!==null && e.socBfr!==undefined) || (e.socAft!==null && e.socAft!==undefined)){
         const b = (e.socBfr!==null && e.socBfr!==undefined) ? e.socBfr : '?';
@@ -943,6 +942,9 @@
         metaParts.push('SoC '+b+'→'+a+'%');
       }
       if(e.current!==null && e.current!==undefined) metaParts.push(e.current+'A');
+      if(rangeText) metaParts.push(rangeText);
+      if(durText) metaParts.push(durText);
+      metaParts.push(Number(e.price).toFixed(2)+' ₪/kWh');
       const isPending = pendingDeleteId === e.id;
       row.innerHTML = `
         <div class="clog-slot">${sorted.length-idx}</div>
