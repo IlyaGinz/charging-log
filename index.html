@@ -24,6 +24,8 @@
     --teal:#2f6b7d;
     --bar:#c69256;
     --cost:#2f2f9e;
+    --batt:#5c8a5a;
+    --loss:#b06a4f;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -284,6 +286,8 @@
   .clog-chart-ynum{font-size:11px;fill:var(--muted-2);font-family:ui-monospace,monospace;}
   .clog-chart-valkwh{font-size:11px;fill:var(--text);font-family:ui-monospace,monospace;font-weight:700;}
   .clog-chart-valbatt{font-size:10px;fill:#fdfaf4;font-family:ui-monospace,monospace;font-weight:700;}
+  .clog-chart-lblbatt{font-size:11px;fill:var(--batt);font-family:ui-monospace,monospace;font-weight:700;}
+  .clog-chart-lblloss{font-size:11px;fill:var(--loss);font-family:ui-monospace,monospace;font-weight:700;}
   .clog-chart-valcost{font-size:11px;fill:var(--cost);font-family:ui-monospace,monospace;font-weight:700;}
   .clog-chart-grid{stroke:var(--line);stroke-width:1;}
   /* setup banner shown when no cloud key configured */
@@ -477,7 +481,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.9';
+  const APP_VERSION = 'v3.10';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -831,7 +835,7 @@
       const cx=padL+gap*i+gap/2;
       const x=padL+gap*i+(gap-bw)/2;
       if(stacked){
-        // --- stacked-столбик: из батареи (низ) + потери (верхушка) ---
+        // --- stacked-столбик: из батареи (низ, зелёный) + потери (верхушка, терракота) ---
         const s = stacked[i];
         if(s.total>0){
           const totalH = (s.total/maxBar)*plotH;
@@ -839,18 +843,17 @@
           const lossH = Math.max(0, totalH - bottomH);
           const yTotalTop = padT+plotH-totalH;
           const yBottomTop = padT+plotH-bottomH;
-          const baseY = padT+plotH; // основание столбика
           if(s.bottom>0){
-            // есть данные из батареи → двухцветный stacked
-            svg+=`<rect x="${x.toFixed(1)}" y="${yBottomTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${bottomH.toFixed(1)}" fill="var(--bar)" opacity="0.85"></rect>`;
+            // низ — из батареи (зелёный), верх — потери (терракота)
+            svg+=`<rect x="${x.toFixed(1)}" y="${yBottomTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${bottomH.toFixed(1)}" fill="var(--batt)"></rect>`;
             if(lossH>0){
-              svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${lossH.toFixed(1)}" fill="var(--bar)" opacity="0.28"></rect>`;
+              svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${lossH.toFixed(1)}" fill="var(--loss)"></rect>`;
             }
-            // цифра «из зарядки» — над верхушкой; «из батареи» — у ОСНОВАНИЯ (не сталкиваются)
-            svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
-            svg+=`<text x="${cx.toFixed(1)}" y="${(baseY-5).toFixed(1)}" text-anchor="middle" class="clog-chart-valbatt">${fmt(s.bottom,1)}</text>`;
+            // две строки цифр над столбиком, в тон сегментам: из батареи (зелёный), потери (терракота)
+            svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-18).toFixed(1)}" text-anchor="middle" class="clog-chart-lblbatt">${fmt(s.bottom,1)}</text>`;
+            svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-lblloss">+${fmt(s.loss,1)}</text>`;
           } else {
-            // нет данных из батареи (SoC не заполнен) → это чистый «из зарядки», рисуем сплошным
+            // нет данных из батареи (SoC не заполнен) → чистый «из зарядки», сплошной медный
             svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${totalH.toFixed(1)}" fill="var(--bar)" opacity="0.85"></rect>`;
             svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
           }
@@ -901,7 +904,7 @@
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
     const LEG = {
       0: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh</span><span><span class="clog-chart-swatch" style="background:var(--cost);border-radius:50%;"></span>₪ (округл. вверх)</span>',
-      1: '<span><span class="clog-chart-swatch" style="background:var(--bar);opacity:0.85;"></span>из батареи</span><span><span class="clog-chart-swatch" style="background:var(--bar);opacity:0.28;"></span>потери</span><span style="color:var(--muted-2);">kWh/100 км</span>',
+      1: '<span><span class="clog-chart-swatch" style="background:var(--batt);"></span>из батареи</span><span><span class="clog-chart-swatch" style="background:var(--loss);"></span>потери</span><span style="color:var(--muted-2);">kWh/100 км</span>',
       2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
       3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
     };
