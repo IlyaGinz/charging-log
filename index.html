@@ -283,6 +283,7 @@
   .clog-chart-axis{font-size:12px;fill:var(--muted);font-family:ui-sans-serif,system-ui,sans-serif;}
   .clog-chart-ynum{font-size:11px;fill:var(--muted-2);font-family:ui-monospace,monospace;}
   .clog-chart-valkwh{font-size:11px;fill:var(--text);font-family:ui-monospace,monospace;font-weight:700;}
+  .clog-chart-valbatt{font-size:10px;fill:#fdfaf4;font-family:ui-monospace,monospace;font-weight:700;}
   .clog-chart-valcost{font-size:11px;fill:var(--cost);font-family:ui-monospace,monospace;font-weight:700;}
   .clog-chart-grid{stroke:var(--line);stroke-width:1;}
   /* setup banner shown when no cloud key configured */
@@ -374,13 +375,12 @@
     <div class="clog-panel">
       <div class="clog-chart-tabs" id="clog-chart-tabs">
         <div class="clog-chart-tab active" data-i="0">Расход</div>
-        <div class="clog-chart-tab" data-i="1">kWh/100⚡</div>
-        <div class="clog-chart-tab" data-i="2">kWh/100🔋</div>
-        <div class="clog-chart-tab" data-i="3">₪/100</div>
-        <div class="clog-chart-tab" data-i="4">Пробег</div>
+        <div class="clog-chart-tab" data-i="1">kWh/100</div>
+        <div class="clog-chart-tab" data-i="2">₪/100</div>
+        <div class="clog-chart-tab" data-i="3">Пробег</div>
       </div>
       <div class="clog-chart-dots" id="clog-chart-dots">
-        <div class="clog-chart-dot on"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div>
+        <div class="clog-chart-dot on"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div><div class="clog-chart-dot"></div>
       </div>
       <div class="clog-chart-yearline">
         <div class="clog-chart-yearsum" id="clog-chart-yearsum">–</div>
@@ -477,7 +477,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.7';
+  const APP_VERSION = 'v3.8';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -682,16 +682,15 @@
   const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   // chart carousel state
-  let chartType = 0;   // 0 расход+₪, 1 kWh/100 из зарядки, 2 kWh/100 из батареи, 3 ₪/100, 4 пробег
+  let chartType = 0;   // 0 расход+₪, 1 kWh/100 stacked (батарея+потери), 2 ₪/100, 3 пробег
   let chartYear = null; // selected year (number); null until first render picks one
   const CHART_TITLES = [
     'Отдано зарядкой и стоимость · по месяцам',
-    'Расход из зарядки на 100 км · по месяцам',
-    'Расход из батареи на 100 км · по месяцам',
+    'Расход на 100 км · батарея + потери · по месяцам',
     'Стоимость на 100 км · по месяцам',
     'Пробег между зарядками · по месяцам'
   ];
-  const CHART_COUNT = 5;
+  const CHART_COUNT = 4;
 
   // aggregate entries into { year: { months:[12], ... } }
   function chartAgg(){
@@ -783,20 +782,26 @@
 
     const d = byYear[chartYear];
     // series per chart type
-    let bars, costs=null, barDecimals=0;
+    let bars, costs=null, barDecimals=0, stacked=null;
     if(chartType===0){
       bars = d.kwh.slice();
       costs = d.cost.map(c=> c>0 ? Math.ceil(c) : 0); // ₪ округление ВВЕРХ
       barDecimals = 0;
     } else if(chartType===1){
-      // расход ИЗ ЗАРЯДКИ kWh/100км = энергия зарядки интервалов / расстояние * 100
-      bars = d.dist.map((km,i)=> km>0 ? +( (d.distKwh[i]/km)*100 ).toFixed(1) : 0);
+      // ОБЪЕДИНЁННЫЙ расход на 100 км, stacked-столбик:
+      //   низ = из батареи (реальная поездка, по ΔSoC), верх = потери (до «из зарядки»).
+      // Полная высота столбика = расход из зарядки; нижняя часть = из батареи.
+      const batt = d.distBattKm.map((km,i)=> km>0 ? +( (d.distBattKwh[i]/km)*100 ).toFixed(1) : 0);
+      const chg  = d.dist.map((km,i)=> km>0 ? +( (d.distKwh[i]/km)*100 ).toFixed(1) : 0);
+      stacked = batt.map((b,i)=>{
+        const total = chg[i];               // из зарядки (полная высота)
+        const bottom = b;                    // из батареи (низ)
+        const loss = (total>0 && bottom>0 && total>bottom) ? +(total-bottom).toFixed(1) : 0;
+        return { bottom, loss, total };
+      });
+      bars = stacked.map(s=> s.total);       // для расчёта maxBar / hasData
       barDecimals = 1;
     } else if(chartType===2){
-      // расход ИЗ БАТАРЕИ kWh/100км = (ΔSoC×ёмкость) / расстояние * 100 — как на приборке
-      bars = d.distBattKm.map((km,i)=> km>0 ? +( (d.distBattKwh[i]/km)*100 ).toFixed(1) : 0);
-      barDecimals = 1;
-    } else if(chartType===3){
       // стоимость ₪/100км = стоимость интервалов / расстояние * 100, с десятыми
       bars = d.dist.map((km,i)=> km>0 ? +( (d.distCost[i]/km)*100 ).toFixed(1) : 0);
       barDecimals = 1;
@@ -821,15 +826,41 @@
       svg+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="clog-chart-grid"></line>`;
       svg+=`<text x="5" y="${(y+4).toFixed(1)}" class="clog-chart-ynum">${Math.round(maxBar*g/2)}</text>`;
     }
-    // bars + kWh labels above + tilted month labels
+    // bars + labels + tilted month labels
     bars.forEach((v,i)=>{
       const cx=padL+gap*i+gap/2;
       const x=padL+gap*i+(gap-bw)/2;
-      const h=v>0?(v/maxBar)*plotH:0;
-      const y=padT+plotH-h;
-      if(v>0){
-        svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--bar)" opacity="0.8"></rect>`;
-        svg+=`<text x="${cx.toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(v, barDecimals)}</text>`;
+      if(stacked){
+        // --- stacked-столбик: из батареи (низ) + потери (верхушка) ---
+        const s = stacked[i];
+        if(s.total>0){
+          const totalH = (s.total/maxBar)*plotH;
+          const bottomH = (s.bottom/maxBar)*plotH;
+          const lossH = Math.max(0, totalH - bottomH);
+          const yTotalTop = padT+plotH-totalH;
+          const yBottomTop = padT+plotH-bottomH;
+          // нижняя часть — реальный расход из батареи (главный, насыщенный)
+          if(bottomH>0){
+            svg+=`<rect x="${x.toFixed(1)}" y="${yBottomTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${bottomH.toFixed(1)}" fill="var(--bar)" opacity="0.85"></rect>`;
+          }
+          // верхушка — потери (приглушённая надстройка)
+          if(lossH>0){
+            svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${lossH.toFixed(1)}" fill="var(--bar)" opacity="0.28"></rect>`;
+          }
+          // цифра «из зарядки» (полная высота) над столбиком
+          svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
+          // цифра «из батареи» внутри нижней части (если хватает высоты)
+          if(bottomH>=16){
+            svg+=`<text x="${cx.toFixed(1)}" y="${(yBottomTop+13).toFixed(1)}" text-anchor="middle" class="clog-chart-valbatt">${fmt(s.bottom,1)}</text>`;
+          }
+        }
+      } else {
+        const h=v>0?(v/maxBar)*plotH:0;
+        const y=padT+plotH-h;
+        if(v>0){
+          svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--bar)" opacity="0.8"></rect>`;
+          svg+=`<text x="${cx.toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(v, barDecimals)}</text>`;
+        }
       }
       svg+=`<text x="${cx.toFixed(1)}" y="${(H-padB+18).toFixed(1)}" text-anchor="end" class="clog-chart-axis" transform="rotate(-45 ${cx.toFixed(1)} ${(H-padB+18).toFixed(1)})">${MONTH_ABBR[i]}</text>`;
     });
@@ -851,7 +882,7 @@
     if(!hasData){
       wrap.innerHTML = (chartType===0)
         ? '<div class="clog-empty">Пока недостаточно данных для графика.</div>'
-        : (chartType===2)
+        : (chartType===1)
           ? '<div class="clog-empty">Недостаточно данных. Нужны пробег и SoC (% before/after) у зарядок подряд.</div>'
           : '<div class="clog-empty">Недостаточно данных о пробеге. Заполни одометр хотя бы у двух зарядок подряд.</div>';
     } else {
@@ -869,10 +900,9 @@
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
     const LEG = {
       0: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh</span><span><span class="clog-chart-swatch" style="background:var(--cost);border-radius:50%;"></span>₪ (округл. вверх)</span>',
-      1: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh / 100 км (из зарядки)</span>',
-      2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh / 100 км (из батареи)</span>',
-      3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
-      4: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
+      1: '<span><span class="clog-chart-swatch" style="background:var(--bar);opacity:0.85;"></span>из батареи</span><span><span class="clog-chart-swatch" style="background:var(--bar);opacity:0.28;"></span>потери</span><span style="color:var(--muted-2);">kWh/100 км</span>',
+      2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
+      3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
     };
     $('clog-chart-legend').innerHTML = LEG[chartType] || '';
     syncTabsDots();
