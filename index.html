@@ -477,7 +477,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.6';
+  const APP_VERSION = 'v3.7';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -1127,12 +1127,8 @@
     ledPulse();
     render();
     if(wasNew){
-      // защита от двойного нажатия: гасим кнопку на 2 сек
-      const addBtn = $('clog-add-btn');
-      addBtn.disabled = true;
-      addBtn.style.opacity = '0.5';
-      setTimeout(()=>{ addBtn.disabled = false; addBtn.style.opacity = ''; }, 2000);
-      // прокрутка к верху журнала, чтобы сразу увидеть новую запись
+      // прокрутка к верху журнала, чтобы сразу увидеть новую запись.
+      // Кнопка «Добавить» при этом уходит выше экрана — блокировать её не нужно.
       const panel = $('clog-journal-panel');
       if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
     }
