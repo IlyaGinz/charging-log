@@ -477,7 +477,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.8';
+  const APP_VERSION = 'v3.9';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -839,19 +839,20 @@
           const lossH = Math.max(0, totalH - bottomH);
           const yTotalTop = padT+plotH-totalH;
           const yBottomTop = padT+plotH-bottomH;
-          // нижняя часть — реальный расход из батареи (главный, насыщенный)
-          if(bottomH>0){
+          const baseY = padT+plotH; // основание столбика
+          if(s.bottom>0){
+            // есть данные из батареи → двухцветный stacked
             svg+=`<rect x="${x.toFixed(1)}" y="${yBottomTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${bottomH.toFixed(1)}" fill="var(--bar)" opacity="0.85"></rect>`;
-          }
-          // верхушка — потери (приглушённая надстройка)
-          if(lossH>0){
-            svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${lossH.toFixed(1)}" fill="var(--bar)" opacity="0.28"></rect>`;
-          }
-          // цифра «из зарядки» (полная высота) над столбиком
-          svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
-          // цифра «из батареи» внутри нижней части (если хватает высоты)
-          if(bottomH>=16){
-            svg+=`<text x="${cx.toFixed(1)}" y="${(yBottomTop+13).toFixed(1)}" text-anchor="middle" class="clog-chart-valbatt">${fmt(s.bottom,1)}</text>`;
+            if(lossH>0){
+              svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${lossH.toFixed(1)}" fill="var(--bar)" opacity="0.28"></rect>`;
+            }
+            // цифра «из зарядки» — над верхушкой; «из батареи» — у ОСНОВАНИЯ (не сталкиваются)
+            svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
+            svg+=`<text x="${cx.toFixed(1)}" y="${(baseY-5).toFixed(1)}" text-anchor="middle" class="clog-chart-valbatt">${fmt(s.bottom,1)}</text>`;
+          } else {
+            // нет данных из батареи (SoC не заполнен) → это чистый «из зарядки», рисуем сплошным
+            svg+=`<rect x="${x.toFixed(1)}" y="${yTotalTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${totalH.toFixed(1)}" fill="var(--bar)" opacity="0.85"></rect>`;
+            svg+=`<text x="${cx.toFixed(1)}" y="${(yTotalTop-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(s.total,1)}</text>`;
           }
         }
       } else {
