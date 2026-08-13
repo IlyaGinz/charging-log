@@ -219,6 +219,17 @@
   .clog-confirm-yes{border-color:var(--red);color:var(--red);}
   .clog-confirm-yes:hover{background:var(--red);color:#fdfaf4;}
   .clog-confirm-no:hover{border-color:var(--copper);color:var(--copper);}
+  .clog-undo{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--copper-dim);border:1px solid var(--copper);
+    border-radius:8px;padding:10px 14px;margin-bottom:12px;
+    font-size:13px;color:var(--text);
+  }
+  .clog-undo-btn{
+    border:1px solid var(--copper);border-radius:6px;background:var(--copper);
+    color:#fdfaf4;font-size:13px;font-weight:600;padding:7px 14px;cursor:pointer;flex:none;
+  }
+  .clog-undo-btn:active{filter:brightness(1.1);}
   .clog-empty{
     text-align:center;color:var(--muted-2);font-size:13px;padding:30px 10px;
   }
@@ -433,7 +444,7 @@
       </div>
     </div>
 
-    <div class="clog-panel">
+    <div class="clog-panel" id="clog-journal-panel">
       <div class="clog-log-head">
         <div class="clog-log-title">Записи</div>
         <div class="clog-log-tools">
@@ -442,6 +453,10 @@
           <button class="clog-toolbtn" id="clog-export-btn">Экспорт CSV</button>
           <input type="file" id="clog-import-file" accept=".csv" style="display:none">
         </div>
+      </div>
+      <div class="clog-undo" id="clog-undo" style="display:none;">
+        <span id="clog-undo-text">Запись удалена</span>
+        <button class="clog-undo-btn" id="clog-undo-btn">Отменить</button>
       </div>
       <div id="clog-list"></div>
     </div>
@@ -462,7 +477,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.5';
+  const APP_VERSION = 'v3.6';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -978,11 +993,14 @@
     });
     list.querySelectorAll('.clog-confirm-yes').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        state.entries = state.entries.filter(e=>String(e.id)!==btn.dataset.id);
+        const delId = btn.dataset.id;
+        const removed = state.entries.find(e=>String(e.id)===delId); // сохраняем для отмены
+        state.entries = state.entries.filter(e=>String(e.id)!==delId);
         pendingDeleteId = null;
-        if(String(editingId)===btn.dataset.id){ editingId = null; resetForm(); }
+        if(String(editingId)===delId){ editingId = null; resetForm(); }
         cloudSave();
         render();
+        if(removed) showUndo(removed);
       });
     });
     list.querySelectorAll('.clog-confirm-no').forEach(btn=>{
@@ -994,6 +1012,28 @@
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  // --- Отмена удаления ---
+  let undoTimer = null;
+  function showUndo(removed){
+    const bar = $('clog-undo');
+    $('clog-undo-text').textContent = 'Запись удалена';
+    bar.style.display = 'flex';
+    if(undoTimer) clearTimeout(undoTimer);
+    undoTimer = setTimeout(hideUndo, 8000); // полоска живёт 8 секунд
+    const btn = $('clog-undo-btn');
+    btn.onclick = ()=>{
+      state.entries.push(removed);       // возвращаем запись
+      cloudSave();
+      hideUndo();
+      render();
+    };
+  }
+  function hideUndo(){
+    if(undoTimer){ clearTimeout(undoTimer); undoTimer = null; }
+    const bar = $('clog-undo');
+    if(bar) bar.style.display = 'none';
   }
 
   function startEdit(id){
@@ -1065,6 +1105,7 @@
     const minutes = computeMinutes(start, end);
     const cost = kwh*price;
     let doneMsg = 'Записано';
+    const wasNew = (editingId === null); // до сброса editingId ниже определить нельзя — фиксируем факт добавления
     if(editingId !== null){
       const idx = state.entries.findIndex(e=>e.id===editingId);
       if(idx !== -1){
@@ -1081,10 +1122,20 @@
     cloudSave();
     resetForm();
     msg.style.color = 'var(--led)';
-    msg.textContent = doneMsg;
-    setTimeout(()=>{ if(msg.textContent===doneMsg) msg.textContent=''; }, 2000);
+    msg.textContent = wasNew ? '✓ Запись добавлена' : doneMsg;
+    setTimeout(()=>{ if(msg.textContent===(wasNew?'✓ Запись добавлена':doneMsg)) msg.textContent=''; }, 2000);
     ledPulse();
     render();
+    if(wasNew){
+      // защита от двойного нажатия: гасим кнопку на 2 сек
+      const addBtn = $('clog-add-btn');
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+      setTimeout(()=>{ addBtn.disabled = false; addBtn.style.opacity = ''; }, 2000);
+      // прокрутка к верху журнала, чтобы сразу увидеть новую запись
+      const panel = $('clog-journal-panel');
+      if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
+    }
   }
 
   // ---- CSV ----
