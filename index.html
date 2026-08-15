@@ -373,6 +373,10 @@
           <div class="clog-stat-label">Пробег, км</div>
           <div class="clog-stat-value clog-mono" id="clog-stat-dist">–</div>
         </div>
+        <div id="clog-stat-to-wrap" style="display:none;">
+          <div class="clog-stat-label">ТО всего, ₪</div>
+          <div class="clog-stat-value clog-mono" id="clog-stat-to">–</div>
+        </div>
       </div>
     </div>
 
@@ -453,6 +457,7 @@
         <div class="clog-log-title">Записи</div>
         <div class="clog-log-tools">
           <button class="clog-toolbtn" id="clog-refresh-btn">Обновить</button>
+          <button class="clog-toolbtn" id="clog-to-btn">Обновить ТО</button>
           <button class="clog-toolbtn" id="clog-import-btn">Импорт CSV</button>
           <button class="clog-toolbtn" id="clog-export-btn">Экспорт CSV</button>
           <input type="file" id="clog-import-file" accept=".csv" style="display:none">
@@ -481,7 +486,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v3.10';
+  const APP_VERSION = 'v4.0';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -490,6 +495,14 @@
   // Bin ID baked into the file — same shared bin for every device.
   // Only the Master Key needs to be entered per device.
   const BUILT_IN_BIN_ID = '6a65b772da38895dfe90dc1b';
+
+  // Опубликованный CSV второго листа (ShortList) Google-таблицы ТО: колонки Date,Price,Type.
+  // Зашит в файл (не секрет). Читается ТОЛЬКО по кнопке «Обновить ТО», без кэша:
+  // до нажатия ТО спрятано, после — показывается актуальное из файла в текущей сессии.
+  const TO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR2QgUPdJ-obKLmpl9U1V71CSyA4wBwy4aIaCbd1jn7xOrnCZgmdetaM-gfjEQMFm5nmTMdoLJ1b_R4/pub?gid=1540042192&single=true&output=csv';
+  // Суммы ТО по годам {год: ₪} и общий итог. null = ещё не загружено (прячем показ).
+  let toByYear = null;
+  let toTotal = null;
 
   // Полезная (usable) ёмкость батареи, кВтч. Hyundai IONIQ 5 84 kWh AWD:
   // валовая 84.0, usable 80.0 (EV-Database). Используется для расчёта расхода
@@ -898,7 +911,12 @@
     const totCost = d.cost.reduce((s,v)=>s+Math.ceil(v>0?v:0),0);
     const totDist = d.dist.reduce((s,v)=>s+v,0); // проеханные км за год (сумма интервалов)
     const distPart = totDist>0 ? ` · <span class="clog-mono">${fmt(totDist,0)} км</span>` : '';
-    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}`;
+    // ТО за выбранный год — показываем только если загружено (без кэша) и есть сумма за этот год
+    let toPart = '';
+    if(toByYear && toByYear[String(chartYear)]>0){
+      toPart = ` · <span class="clog-mono">ТО ${fmt(toByYear[String(chartYear)],0)} ₪</span>`;
+    }
+    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}${toPart}`;
 
     // title + legend + tabs/dots
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
@@ -937,6 +955,38 @@
     renderMonthlyChart();
   }
 
+  // --- ТО: загрузка сумм из опубликованного CSV витрины (по кнопке, без кэша) ---
+  async function loadTO(){
+    const btn = $('clog-to-btn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Загрузка…'; }
+    try{
+      const resp = await fetch(TO_CSV_URL, { cache:'no-store' });
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      const text = await resp.text();
+      const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+      const byYear = {};
+      let total = 0;
+      for(let i=1;i<lines.length;i++){ // пропускаем заголовок
+        const cols = parseCsvLine(lines[i], ',');
+        const date = (cols[0]||'').trim();
+        const priceRaw = (cols[1]||'').trim();
+        const m = priceRaw.match(/\d+(?:\.\d+)?/);       // ведущее число, даже если есть пояснение
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !m) continue;
+        const year = date.slice(0,4);
+        const val = parseFloat(m[0]);
+        byYear[year] = (byYear[year]||0) + val;
+        total += val;
+      }
+      toByYear = byYear;
+      toTotal = total;
+      render();
+    }catch(e){
+      alert('Не удалось загрузить ТО: '+e.message);
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = 'Обновить ТО'; }
+    }
+  }
+
   function computeStats(){
     const entries = state.entries;
     const count = entries.length;
@@ -961,6 +1011,14 @@
     $('clog-stat-cost').textContent = fmt(s.totalCost,2);
     $('clog-stat-avgkwh').textContent = s.avgKwh===null ? '–' : fmt(s.avgKwh,1);
     $('clog-stat-dist').textContent = s.totalDist>0 ? fmt(s.totalDist,0) : '–';
+    // ТО всего — ячейка появляется только после загрузки (без кэша)
+    const toWrap = $('clog-stat-to-wrap');
+    if(toTotal!==null){
+      toWrap.style.display = '';
+      $('clog-stat-to').textContent = fmt(toTotal,0);
+    } else {
+      toWrap.style.display = 'none';
+    }
 
     const list = $('clog-list');
     list.innerHTML = '';
@@ -1371,6 +1429,7 @@
     if(editingId===null) resetForm();
     render();
   });
+  $('clog-to-btn').addEventListener('click', loadTO);
   $('clog-setup-save').addEventListener('click', connectCloud);
 
   // chart carousel controls
