@@ -483,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.4';
+  const APP_VERSION = 'v4.5';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -1063,7 +1063,7 @@
           const battKwh = (drop/100) * USABLE_KWH;
           const cons = battKwh / dist * 100;      // kWh/100km
           const eff  = dist / battKwh;             // km/kWh
-          consLine = `${fmt(cons,1)} kWh/100 · ${fmt(eff,1)} km/kWh`;
+          consLine = `${fmt(cons,1)}\u00A0kWh/100 · ${fmt(eff,1)}\u00A0km/kWh`;
         }
       }
       const isPending = pendingDeleteId === e.id;
