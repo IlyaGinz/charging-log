@@ -190,6 +190,7 @@
     display:flex;gap:10px;flex-wrap:wrap;
   }
   .clog-row-note{font-size:11.5px;color:var(--muted-2);margin-top:3px;font-style:italic;}
+  .clog-row-cons{font-size:11.5px;color:var(--batt);margin-top:3px;font-variant-numeric:tabular-nums;}
   .clog-row-right{text-align:right;flex:none;}
   .clog-row-kwh{font-size:14.5px;font-weight:700;}
   .clog-row-cost{font-size:12px;color:var(--copper);margin-top:2px;}
@@ -482,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.3';
+  const APP_VERSION = 'v4.4';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -1046,12 +1047,32 @@
       if(rangeText) metaParts.push(rangeText);
       if(durText) metaParts.push(durText);
       metaParts.push(Number(e.price).toFixed(2)+' ₪/kWh');
+      // Расход+эффективность интервала, ведущего К этой зарядке (от предыдущей, более старой).
+      // sorted — от новых к старым, значит предыдущая зарядка = следующий элемент (idx+1).
+      // Нужны: пробег обеих, SoC_aft предыдущей и SoC_bfr текущей, положительная просадка.
+      let consLine = '';
+      const prev = sorted[idx+1];
+      if(prev &&
+         e.odo!==null && e.odo!==undefined && prev.odo!==null && prev.odo!==undefined &&
+         Number(e.odo) > Number(prev.odo) &&
+         e.socBfr!==null && e.socBfr!==undefined &&
+         prev.socAft!==null && prev.socAft!==undefined){
+        const dist = Number(e.odo) - Number(prev.odo);
+        const drop = Number(prev.socAft) - Number(e.socBfr);
+        if(drop > 0 && dist > 0){
+          const battKwh = (drop/100) * USABLE_KWH;
+          const cons = battKwh / dist * 100;      // kWh/100km
+          const eff  = dist / battKwh;             // km/kWh
+          consLine = `${fmt(cons,1)} kWh/100 · ${fmt(eff,1)} km/kWh`;
+        }
+      }
       const isPending = pendingDeleteId === e.id;
       row.innerHTML = `
         <div class="clog-slot">${sorted.length-idx}</div>
         <div class="clog-row-main">
           <div class="clog-row-date">${e.date}</div>
           <div class="clog-row-meta">${metaParts.map(m=>'<span>'+m+'</span>').join('')}</div>
+          ${consLine ? '<div class="clog-row-cons">'+consLine+'</div>' : ''}
           ${e.note ? '<div class="clog-row-note">'+escapeHtml(e.note)+'</div>' : ''}
         </div>
         ${isPending ? `
