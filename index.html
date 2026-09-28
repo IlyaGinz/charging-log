@@ -483,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.7-rc2';
+  const APP_VERSION = 'v4.7-rc3';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -898,11 +898,11 @@
     const totKwh = d.kwh.reduce((s,v)=>s+v,0);
     const totCost = d.cost.reduce((s,v)=>s+Math.ceil(v>0?v:0),0);
     const totDist = d.dist.reduce((s,v)=>s+v,0); // проеханные км за год (сумма интервалов)
-    const distPart = totDist>0 ? ` · <span class="clog-mono">${fmt(totDist,0)} км</span>` : '';
+    const distPart = totDist>0 ? ` · <span class="clog-mono">${fmt(totDist,0)}\u00A0км</span>` : '';
     // ТО за выбранный год — показываем только если загружено (без кэша) и есть сумма за этот год
     let toPart = '';
     if(toByYear && toByYear[String(chartYear)]>0){
-      toPart = ` · <span class="clog-mono">ТО ${fmt(toByYear[String(chartYear)],0)} ₪</span>`;
+      toPart = ` · <span class="clog-mono">ТО\u00A0${fmt(toByYear[String(chartYear)],0)}\u00A0₪</span>`;
     }
     // Средний КПД зарядки за год: по каждой зарядке года (ΔSoC×usable ÷ отдано), затем среднее.
     // Считается по самим зарядкам (не по интервалам) — это честный КПД, без привязки к пробегу.
@@ -918,9 +918,9 @@
     });
     if(yearEff.length){
       const avgKpd = yearEff.reduce((s,v)=>s+v,0)/yearEff.length;
-      kpdPart = ` · <span class="clog-mono">\u03B7 ${fmt(avgKpd,0)}%</span>`;
+      kpdPart = ` · <span class="clog-mono">\u03B7\u00A0${fmt(avgKpd,0)}%</span>`;
     }
-    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}${toPart}${kpdPart}`;
+    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)}\u00A0kWh</span> · <span class="clog-mono">${totCost}\u00A0₪</span>${distPart}${toPart}${kpdPart}`;
 
     // title + legend + tabs/dots
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
