@@ -483,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.6';
+  const APP_VERSION = 'v4.7-rc2';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -698,7 +698,7 @@
   let chartYear = null; // selected year (number); null until first render picks one
   const CHART_TITLES = [
     'Отдано зарядкой и стоимость · по месяцам',
-    'Расход на 100 км · батарея + потери · по месяцам',
+    'Расход из батареи на 100 км · по месяцам',
     'Стоимость на 100 км · по месяцам',
     'Пробег между зарядками · по месяцам'
   ];
@@ -800,18 +800,10 @@
       costs = d.cost.map(c=> c>0 ? Math.ceil(c) : 0); // ₪ округление ВВЕРХ
       barDecimals = 0;
     } else if(chartType===1){
-      // ОБЪЕДИНЁННЫЙ расход на 100 км, stacked-столбик:
-      //   низ = из батареи (реальная поездка, по ΔSoC), верх = потери (до «из зарядки»).
-      // Полная высота столбика = расход из зарядки; нижняя часть = из батареи.
-      const batt = d.distBattKm.map((km,i)=> km>0 ? +( (d.distBattKwh[i]/km)*100 ).toFixed(1) : 0);
-      const chg  = d.dist.map((km,i)=> km>0 ? +( (d.distKwh[i]/km)*100 ).toFixed(1) : 0);
-      stacked = batt.map((b,i)=>{
-        const total = chg[i];               // из зарядки (полная высота)
-        const bottom = b;                    // из батареи (низ)
-        const loss = (total>0 && bottom>0 && total>bottom) ? +(total-bottom).toFixed(1) : 0;
-        return { bottom, loss, total };
-      });
-      bars = stacked.map(s=> s.total);       // для расчёта maxBar / hasData
+      // Расход на 100 км из батареи (реальная поездка, по просадке SoC).
+      // Потери убраны с графика (v4.7): показатель был смазан привязкой зарядки к интервалу,
+      // а КПД почти постоянен (~86%) — динамику показывать незачем. КПД теперь числом в годовой строке.
+      bars = d.distBattKm.map((km,i)=> km>0 ? +( (d.distBattKwh[i]/km)*100 ).toFixed(1) : 0);
       barDecimals = 1;
     } else if(chartType===2){
       // стоимость ₪/100км = стоимость интервалов / расстояние * 100, с десятыми
@@ -870,7 +862,8 @@
         const h=v>0?(v/maxBar)*plotH:0;
         const y=padT+plotH-h;
         if(v>0){
-          svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--bar)" opacity="0.8"></rect>`;
+          const barColor = (chartType===1) ? 'var(--batt)' : 'var(--bar)';
+          svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${barColor}" opacity="0.85"></rect>`;
           svg+=`<text x="${cx.toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" class="clog-chart-valkwh">${fmt(v, barDecimals)}</text>`;
         }
       }
@@ -911,13 +904,29 @@
     if(toByYear && toByYear[String(chartYear)]>0){
       toPart = ` · <span class="clog-mono">ТО ${fmt(toByYear[String(chartYear)],0)} ₪</span>`;
     }
-    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}${toPart}`;
+    // Средний КПД зарядки за год: по каждой зарядке года (ΔSoC×usable ÷ отдано), затем среднее.
+    // Считается по самим зарядкам (не по интервалам) — это честный КПД, без привязки к пробегу.
+    let kpdPart = '';
+    const yearEff = [];
+    state.entries.forEach(e=>{
+      if(String(e.date||'').slice(0,4) !== String(chartYear)) return;
+      if(e.socBfr==null || e.socAft==null || !e.kwh) return;
+      const d = Number(e.socAft) - Number(e.socBfr);
+      if(d>0 && Number(e.kwh)>0){
+        yearEff.push( (d/100*USABLE_KWH) / Number(e.kwh) * 100 );
+      }
+    });
+    if(yearEff.length){
+      const avgKpd = yearEff.reduce((s,v)=>s+v,0)/yearEff.length;
+      kpdPart = ` · <span class="clog-mono">\u03B7 ${fmt(avgKpd,0)}%</span>`;
+    }
+    $('clog-chart-yearsum').innerHTML = `${chartYear} · <span class="clog-mono">${fmt(totKwh,0)} kWh</span> · <span class="clog-mono">${totCost} ₪</span>${distPart}${toPart}${kpdPart}`;
 
     // title + legend + tabs/dots
     $('clog-chart-title').textContent = CHART_TITLES[chartType];
     const LEG = {
       0: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>kWh</span><span><span class="clog-chart-swatch" style="background:var(--cost);border-radius:50%;"></span>₪ (округл. вверх)</span>',
-      1: '<span><span class="clog-chart-swatch" style="background:var(--batt);"></span>из батареи</span><span><span class="clog-chart-swatch" style="background:var(--loss);"></span>потери</span><span style="color:var(--muted-2);">kWh/100 км</span>',
+      1: '<span><span class="clog-chart-swatch" style="background:var(--batt);"></span>расход из батареи · kWh/100 км</span>',
       2: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>₪ / 100 км</span>',
       3: '<span><span class="clog-chart-swatch" style="background:var(--bar);"></span>км между зарядками</span>'
     };
@@ -1064,6 +1073,16 @@
           const cons = battKwh / dist * 100;      // kWh/100km
           const eff  = dist / battKwh;             // km/kWh
           consLine = `${fmt(cons,1)}\u00A0kWh/100km · ${fmt(eff,1)}\u00A0km/kWh`;
+        }
+      }
+      // КПД этой зарядки (по её собственным SoC + отданным kWh) — не зависит от предыдущей.
+      // Через разделитель после расхода/эффективности; при нехватке места сползёт на след. строку.
+      if(e.socBfr!==null && e.socBfr!==undefined && e.socAft!==null && e.socAft!==undefined && e.kwh){
+        const dS = Number(e.socAft) - Number(e.socBfr);
+        if(dS>0 && Number(e.kwh)>0){
+          const kpd = (dS/100*USABLE_KWH) / Number(e.kwh) * 100;
+          const kpdStr = `\u03B7\u00A0${fmt(kpd,0)}%`;
+          consLine = consLine ? (consLine + ' · ' + kpdStr) : kpdStr;
         }
       }
       const isPending = pendingDeleteId === e.id;
