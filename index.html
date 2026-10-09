@@ -483,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.7';
+  const APP_VERSION = 'v4.8-rc1';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -1081,7 +1081,10 @@
         const dS = Number(e.socAft) - Number(e.socBfr);
         if(dS>0 && Number(e.kwh)>0){
           const kpd = (dS/100*USABLE_KWH) / Number(e.kwh) * 100;
-          const kpdStr = `\u03B7\u00A0${fmt(kpd,0)}%`;
+          // Малая зарядка (ΔSoC < 15%, напр. дозарядка «добил немного») → η ненадёжна
+          // (округление SoC бьёт сильно на малом числителе + накладные дозарядки). Помечаем тильдой «~».
+          const approx = dS < 15 ? '~' : '';
+          const kpdStr = `\u03B7\u00A0${approx}${fmt(kpd,0)}%`;
           consLine = consLine ? (consLine + ' · ' + kpdStr) : kpdStr;
         }
       }
