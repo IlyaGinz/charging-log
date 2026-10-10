@@ -483,7 +483,7 @@
   // ---------------------------------------------------------------------------
   // App version — bump this on every code change so it's visible in the header
   // (top-right, above the date). Lets you confirm which build is live on GitHub Pages.
-  const APP_VERSION = 'v4.8';
+  const APP_VERSION = 'v4.9-rc1';
 
   const CFG_KEY = 'charging-log-cfg-v1';
   const CACHE_KEY = 'charging-log-cache-v1'; // offline fallback copy
@@ -738,7 +738,10 @@
     const withOdo = state.entries
       .filter(e=> e.odo!==null && e.odo!==undefined && !isNaN(Number(e.odo)) && /^\d{4}-\d{2}-\d{2}$/.test(e.date||''))
       .slice()
-      .sort((a,b)=> (a.date+String(a.start||'')) < (b.date+String(b.start||'')) ? -1 : 1);
+      // Сортируем по дате, при равной дате — по одометру (он монотонно растёт по ходу пробега).
+      // НЕ по времени суток: ночная зарядка (00:00) после дневной (14:43) того же дня имеет
+      // меньшее время суток, и сортировка по start ставила её раньше → ломались интервалы.
+      .sort((a,b)=> a.date!==b.date ? (a.date<b.date?-1:1) : (Number(a.odo)-Number(b.odo)));
     for(let i=1;i<withOdo.length;i++){
       const prev = withOdo[i-1], cur = withOdo[i];
       const dist = Number(cur.odo) - Number(prev.odo);
